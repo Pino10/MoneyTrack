@@ -423,7 +423,11 @@ final class Store: ObservableObject {
                 ws.append(w)
                 wid = w.id
             }
-            let t = Txn(date: date, kind: kind, category: Store.mapCategory(r[iC], income: kind == .income),
+            let rawCat = r[iC].trimmingCharacters(in: .whitespaces)
+            let isIncome = kind == .income
+            let exact = categories.first { $0.income == isIncome && $0.name.lowercased() == rawCat.lowercased() }
+            let code = exact?.code ?? Store.mapCategory(rawCat, income: isIncome)
+            let t = Txn(date: date, kind: kind, category: code,
                         amount: abs(amt), memo: r[iM], walletID: wid, toWalletID: nil, tag: r[iC])
             if seen.insert(key(t)).inserted {
                 all.append(t)
