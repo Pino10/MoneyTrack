@@ -19,7 +19,13 @@ Everything stays on your phone. There are no accounts and no servers.
 3. Open the finished run and download the **MoneyTrack-ipa** artifact. Unzip it to get `MoneyTrack.ipa`.
 4. To share it, create a **Release** on GitHub. The workflow attaches `MoneyTrack.ipa` to it.
 
-## Install on an iPhone
+## Easiest and most trusted: Xcode (no third-party tools)
+1. On a Mac, install Xcode (free, App Store).
+2. On this page press the green **Code** button, then **Download ZIP**, and unzip it.
+3. Open `MoneyTrack.xcodeproj`. Click the project, then **Signing and Capabilities**, and choose your Apple ID as the Team.
+4. Plug in your iPhone, pick it at the top of Xcode, and press Run. Trust the profile on the phone when asked.
+
+## Other ways to install an iPhone
 The IPA is unsigned, so it must be signed with your own Apple ID when you install it:
 - **Sideloadly** (Mac or Windows): plug in the phone, drag in the IPA, sign in with your Apple ID.
 - **AltStore or SideStore:** add the IPA and it refreshes itself every week.

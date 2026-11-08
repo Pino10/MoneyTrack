@@ -28,6 +28,17 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
+      - name: Save the Xcode project to the repository
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add -f MoneyTrack.xcodeproj MoneyTrack/Info.plist
+          if ! git diff --cached --quiet; then
+            git commit -m "Update generated Xcode project [skip ci]"
+            git push origin HEAD:main
+          fi
+
       - name: Build (unsigned)
         run: |
           set -o pipefail

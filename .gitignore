@@ -1,6 +1,4 @@
 build/
-*.xcodeproj
-MoneyTrack/Info.plist
 .DS_Store
 Payload/
 *.ipa
