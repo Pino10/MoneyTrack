@@ -52,7 +52,17 @@ jobs:
           name: MoneyTrack-ipa
           path: MoneyTrack.ipa
 
-      - name: Attach to release
+      - name: Publish the latest IPA as a release
+        if: github.event_name != 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: MoneyTrack latest build
+          body: Unsigned IPA built from the newest commit. Install it with Sideloadly, AltStore or SideStore.
+          make_latest: true
+          files: MoneyTrack.ipa
+
+      - name: Attach to a published release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
