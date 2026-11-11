@@ -40,7 +40,7 @@ del:'<path d="M21 5H9l-6 7 6 7h12z"/><path d="M13 9.5l4 5M17 9.5l-4 5"/>'
 const ico=(n,s=22)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[n]||''}</svg>`;
 const WTYPES=[['bank','Bank account'],['card','Card'],['mobileMoney','Mobile money'],['cash','Cash at hand'],['savings','Savings'],['invest','Investment']];
 const DAY=864e5;
-const VER='3.0';
+const VER='3.1';
 const SXB=`<button class="sx" data-close aria-label="Close">${ico('x',18)}</button>`;
 const VW=()=>P().wallets.filter(w=>!w.hidden);
 
@@ -53,7 +53,10 @@ let S=load();
 const P=()=>S.profiles.find(p=>p.id===S.active)||S.profiles[0];
 const rc=()=>P().kind==='records';
 const cur=()=>P().cur;
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S));return true}catch(e){toast('Storage is full. Export a backup.');return false}}
+let LASTSAVE=0;
+function saveStatus(){const n=S.profiles.reduce((a,p)=>a+p.txns.length,0);const lb=S.set.lastBackup;const old=!lb||Date.now()-lb>14*DAY;return`<div class="svst ${old?'warn':''}"><i class="dot"></i><div class="m"><b>Saved on this device</b><span class="sm" style="display:block">${n.toLocaleString()} entries stored. Every entry is saved the moment you tap Save${LASTSAVE?'. Last save '+new Date(LASTSAVE).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):''}.</span><span class="sm" style="display:block;margin-top:4px">${lb?'Last backup file: '+new Date(lb).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'No backup file yet'}${old?'. Back up now to be extra safe.':'.'}</span></div></div><button class="btn soft" style="margin-top:12px" data-act="backupnow">Back up now</button>`}
+function doBackupNow(){const b=document.querySelector('[data-act=backup]');b?b.click():toast('Open Settings')}
+function save(){try{const j=JSON.stringify(S);localStorage.setItem(KEY,j);if(localStorage.getItem(KEY)!==j)throw 0;LASTSAVE=Date.now();return true}catch(e){toast('Storage is full. Export a backup.');return false}}
 addEventListener('pagehide',save);document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
 let _bal=null,_wm=null,_cm=null;
 function dirty(){_bal=_wm=_cm=null;save()}
@@ -78,7 +81,8 @@ function countUps(root){root.querySelectorAll('[data-cu]').forEach(el=>{const to
 function fit(el){if(!el)return;el.style.fontSize='';let n=0;while(el.scrollWidth>el.clientWidth+1&&n++<16){el.style.fontSize=(parseFloat(getComputedStyle(el).fontSize)*.93)+'px'}}
 function fitAll(root){root.querySelectorAll('.fit').forEach(fit)}
 function play(root){root.classList.remove('go');requestAnimationFrame(()=>requestAnimationFrame(()=>{root.classList.add('go');countUps(root);fitAll(root)}))}
-function applyTheme(){const t=S.set.theme;const dark=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=dark?'dark':'light';document.querySelectorAll('meta[name=theme-color]').forEach(m=>m.remove());const m=document.createElement('meta');m.name='theme-color';m.content=dark?'#000000':'#ffffff';document.head.appendChild(m)}
+function applyVibe(){document.documentElement.dataset.vibe=S.set.vibe||'aurora'}
+function applyTheme(){applyVibe();const t=S.set.theme;const dark=t==='dark'||(t==='auto'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=dark?'dark':'light';document.querySelectorAll('meta[name=theme-color]').forEach(m=>m.remove());const m=document.createElement('meta');m.name='theme-color';m.content=dark?'#000000':'#ffffff';document.head.appendChild(m)}
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyTheme);
 
 /* ---------- analytics ---------- */
@@ -332,6 +336,8 @@ function vSettings(){
  const st=S.set,p=P();
  return ttl('Make it yours','Settings')+
  card('Profiles',S.profiles.map(q=>`<button class="row" data-act="switch" data-id="${q.id}"><div class="av" style="width:40px;height:40px">${esc(q.name.slice(0,1).toUpperCase())}</div><div class="m"><b>${esc(q.name)}</b><span>${q.kind==='records'?'Savings records':'Daily spending'} · ${q.wallets.length} ${q.kind==='records'?'plans':'wallets'} · ${q.txns.length.toLocaleString()} entries</span></div>${q.id===S.active?`<span class="pill inc">Active</span>`:''}</button>`).join('')+`<button class="btn soft" style="margin-top:12px" data-act="newprofile">${ico('plus',18)} New profile</button><button class="btn soft" data-act="manage" data-id="${p.id}">${ico('edit',18)} Rename or delete “${esc(p.name)}”</button>`,{i:1})+
+ card('Saved status',saveStatus(),{i:1})+
+ card('Vibe',`<div class="vibes">${[['aurora','Aurora glass','linear-gradient(135deg,#3b82f6,#8b5cf6)'],['sunset','Sunset','linear-gradient(135deg,#f97316,#ec4899)'],['ocean','Ocean','linear-gradient(135deg,#0284c7,#0d9488)'],['berry','Berry','linear-gradient(135deg,#c026d3,#7c3aed)'],['mono','Mono','linear-gradient(135deg,#18181b,#a1a1aa)']].map(([k,n,g])=>`<button class="vb ${(st.vibe||'aurora')===k?'on':''}" data-act="vibe" data-v="${k}"><i style="background:${g}"></i>${n}</button>`).join('')}</div>`,{i:2})+
  card('Appearance',`<div class="seg">${[['auto','Auto'],['light','White'],['dark','Dark']].map(([k,v])=>`<button class="${st.theme===k?'on':''}" data-act="theme" data-v="${k}">${v}</button>`).join('')}</div>`,{i:2})+
  card('Currency for '+esc(p.name),`<select class="field" id="curSel">${CURS.map(c=>`<option ${c===p.cur?'selected':''}>${c}</option>`).join('')}</select><p class="sm" style="margin-top:8px">Totals and insights count ${rc()?'plans':'wallets'} in this currency.</p>`,{i:3})+
  card('Data',`<div class="set"><button class="row" data-act="cats"><div class="m"><b>Categories</b><span>Rename or add. Letters and numbers only</span></div></button><button class="row" data-act="import"><div class="m"><b>Import CSV into ${esc(p.name)}</b><span>Your old app format. Duplicates are skipped</span></div></button><button class="row" data-act="export"><div class="m"><b>Export ${esc(p.name)} as CSV</b><span>${p.txns.length.toLocaleString()} entries</span></div></button><button class="row" data-act="backup"><div class="m"><b>Back up everything</b><span>${S.set.lastBackup?'Last backup '+new Date(S.set.lastBackup).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'Never backed up'}. One file with all profiles</span></div></button><button class="row" data-act="restore"><div class="m"><b>Restore a backup</b><span>Pick a backup file. A CSV is added to this profile instead</span></div></button><button class="row" data-act="wipe"><div class="m"><b class="exp">Erase this profile</b><span>Removes its wallets and entries</span></div></button></div>`,{i:4})+
@@ -345,8 +351,10 @@ function vCats(){
 
 /* ---------- sheets ---------- */
 let SH=null;const PAD='<div class="pad"></div>';
-function sheet(html,mount){closeSheet(true);const L=$('#layer');L.innerHTML=`<div class="scrim"></div><div class="sheet" role="dialog">${SXB}<div class="grab"></div>${html}</div>`;const sc=$('.scrim',L),sh=$('.sheet',L);sc.onclick=()=>closeSheet();SH=sh;requestAnimationFrame(()=>requestAnimationFrame(()=>{sc.classList.add('on');sh.classList.add('on')}));mount&&mount(sh);return sh}
-function closeSheet(now){const L=$('#layer');const sc=$('.scrim',L),sh=$('.sheet',L);SH=null;if(!sh)return;if(now){L.innerHTML='';return}sc.classList.remove('on');sh.classList.remove('on');setTimeout(()=>{if(!SH)L.innerHTML=''},450)}
+function sheet(html,mount){closeSheet(true);const L=$('#layer');L.innerHTML=`<div class="scrim"></div><div class="sheet" role="dialog">${SXB}<div class="grab"></div>${html}</div>`;const sc=$('.scrim',L),sh=$('.sheet',L);sc.onclick=()=>closeSheet();SH=sh;requestAnimationFrame(()=>requestAnimationFrame(()=>{sc.classList.add('on');sh.classList.add('on')}));syncLock();mount&&mount(sh);return sh}
+let _sy=0,_lk=false;
+function syncLock(){const open=!!document.querySelector('#layer .sheet');if(open&&!_lk){_sy=scrollY;document.body.style.top=-_sy+'px';document.body.classList.add('lock');_lk=true}else if(!open&&_lk){document.body.classList.remove('lock');document.body.style.top='';scrollTo(0,_sy);_lk=false}}
+function closeSheet(now){setTimeout(syncLock,now?0:480);const L=$('#layer');const sc=$('.scrim',L),sh=$('.sheet',L);SH=null;if(!sh)return;if(now){L.innerHTML='';return}sc.classList.remove('on');sh.classList.remove('on');setTimeout(()=>{if(!SH)L.innerHTML=''},450)}
 const cleanW=s=>/^[A-Za-z0-9][A-Za-z0-9 ()&'.\-]{1,39}$/.test(s.trim());
 const cleanOK=s=>/^[A-Za-z0-9][A-Za-z0-9 ]{1,23}$/.test(s.trim());
 
@@ -386,7 +394,7 @@ function saveAdd(){
  if(A.k==='t'){if(!A.to){toast('Choose where it goes');return}}else if(!A.c){toast('Pick a category');return}
  const t={id:A.edit||uid(),t:A.t,k:A.k,c:A.k==='t'?'TX':A.c,a:Math.round(a*100)/100,m:(A.m||'').trim(),w:A.w,to:A.k==='t'?A.to:''};
  if(A.edit){const i=P().txns.findIndex(x=>x.id===A.edit);P().txns[i]=t}else P().txns.push(t);
- dirty();closeSheet();okAnim();buzz();render();toast('Saved')}
+ dirty();closeSheet();okAnim();buzz();render();toast('Saved on this device ('+P().txns.length.toLocaleString()+' entries)')}
 
 function openDetail(t){
  const w=WM()[t.w]||{name:'?',cur:cur()},c=cat(t.k==='t'?'TX':t.c);const col=t.k==='t'?'#8e8e93':(COLORS[t.c]||'#8e8e93');const d=new Date(t.t);
@@ -530,6 +538,8 @@ document.addEventListener('click',e=>{
  case'hw':H.w=v;H.n=120;render();break;
  case'hm':H.m=v==='all'?'all':+v;H.n=120;render();break;
  case'more':H.n+=120;$('#hl').innerHTML=histList();countUps($('#hl'));break;
+ case'vibe':S.set.vibe=v;save();applyTheme();render();break;
+ case'backupnow':doBackupNow();break;
  case'theme':S.set.theme=v;save();applyTheme();render();break;
  case'cats':setTab('cats');break;
  case'import':doImport();break;
@@ -555,6 +565,7 @@ addEventListener('resize',()=>fitAll(document));
 /* ---------- boot ---------- */
 PER=P().kind==='records'?'y':'m';applyTheme();shell();render();
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 window.__mt={S:()=>S,P,importInto,render,setTab,save,dirty,switchProfile,exportCSV,load:()=>load(),shell};
 })();
