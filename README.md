@@ -2,7 +2,7 @@
 
 A private, open source money tracker that runs in the browser and installs like an app on iPhone, Android and laptops. No account, no server: all data stays on your device.
 
-- Live app: https://pino10.github.io/moneytrack/
+- Live app: https://pino10.github.io/MoneyTrack/
 - iPhone: open in Safari, tap Share, then Add to Home Screen.
 - Android: open in Chrome, tap the menu, then Install app.
 - Import and export CSV from Settings. Your records are never stored in this repository.
