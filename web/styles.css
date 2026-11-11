@@ -273,3 +273,14 @@ main{max-width:1080px;margin-left:268px;margin-right:auto;padding:26px 36px 60px
 @media(max-height:700px){.kp button{height:44px;font-size:20px}.amt .big{font-size:42px}}
 @media(orientation:landscape) and (max-height:520px){.tabbar{height:58px}.fab{width:50px;height:50px;margin-top:-12px}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.rise{opacity:1;transform:none}.bars .p i{height:var(--h)}.tr i{width:var(--w)}.donut .sgm,.rg .rf,.ring1 .fg,.pr .rf{stroke-dasharray:var(--d) 100}.sp .ln{stroke-dashoffset:0}.sp .ar,.sp .dot{opacity:1}.waves{height:calc(var(--lv) * 1%)}.heat i,.dotsr i{transform:none;opacity:1}.row .mb{width:calc(var(--w) * (100% - 57px) * .01)}}
+
+.sx{position:sticky;top:6px;float:right;margin:-2px -8px 0 0;width:38px;height:38px;border-radius:50%;background:var(--chip);display:grid;place-items:center;z-index:6;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);transition:transform .2s}
+.sx:active{transform:scale(.9)}
+.wgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.wgrid .wc{flex:none;min-width:0;padding:14px}
+.wgrid .wc .a{font-size:clamp(15px,4.6vw,19px)}
+.wgrid .wc.add{min-height:100px}
+.pfw{position:relative;margin-bottom:10px}
+.pfw .pf{margin:0;padding-right:58px}
+.pfe{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;background:var(--chip);display:grid;place-items:center}
+@media(max-width:360px){.wgrid{grid-template-columns:1fr}}

@@ -33,11 +33,16 @@ chev:'<path d="M6 9l6 6 6-6"/>',
 play:'<path d="M8 5l11 7-11 7z" fill="currentColor"/>',
 check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
 search:'<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>',
+edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
 del:'<path d="M21 5H9l-6 7 6 7h12z"/><path d="M13 9.5l4 5M17 9.5l-4 5"/>'
 };
 const ico=(n,s=22)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[n]||''}</svg>`;
 const WTYPES=[['bank','Bank account'],['card','Card'],['mobileMoney','Mobile money'],['cash','Cash at hand'],['savings','Savings'],['invest','Investment']];
 const DAY=864e5;
+const VER='2.1';
+const SXB=`<button class="sx" data-close aria-label="Close">${ico('x',18)}</button>`;
+const VW=()=>P().wallets.filter(w=>!w.hidden);
 
 /* ---------- state ---------- */
 function newProfile(name,kind,cur){return{id:uid(),name,kind,cur:cur||'GHS',cats:(kind==='records'?RECORDS_CATS:DAILY_CATS).map(c=>({...c})),wallets:[],txns:[]}}
@@ -78,7 +83,7 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyTheme)
 
 /* ---------- analytics ---------- */
 const SYSC=c=>c==='TX'||c==='AD';
-const inCur=t=>{const w=WM()[t.w];return !w||w.cur===cur()};
+const inCur=t=>{const w=WM()[t.w];return !w||(w.cur===cur()&&!w.hidden)};
 const isSpend=t=>t.k==='e'&&!SYSC(t.c)&&inCur(t)&&(rc()||t.c!=='SV');
 const isEarn=t=>t.k==='i'&&!SYSC(t.c)&&inCur(t)&&(rc()||t.c!=='LR');
 const isSave=t=>!rc()&&t.k==='e'&&t.c==='SV'&&inCur(t);
@@ -137,7 +142,7 @@ const card=(t,b,o={})=>`<section class="g card rise ${o.cls||''}" style="--i:${o
 function barsHtml(items,o={}){const mx=Math.max(1,...items.map(x=>Math.max(...x.vals)));return`<div class="bars" style="height:${o.h||150}px">${items.map((it,i)=>`<div class="c ${it.hi?'hi':''}"><div class="p">${it.vals.map((v,j)=>`<i style="--h:${Math.max(1.5,v/mx*100)}%;--i:${i};background:${it.cols[j]};${o.w?`max-width:${o.w}px`:''}"></i>`).join('')}</div><em>${it.l}</em></div>`).join('')}</div>`}
 
 /* ---------- shell and views ---------- */
-let TAB='today',PER='m',H={q:'',f:'all',w:'all',n:60};
+let TAB='today',PER='m',H={q:'',f:'all',w:'all',n:120,m:'cur'};
 const view=()=>$('#view');
 const TABIDX={today:0,wallets:1,insights:3,history:4};
 function shell(){
@@ -162,10 +167,11 @@ function txRow(t,mx){const w=WM()[t.w],c=cat(t.k==='t'?'TX':t.c);let title,sub,a
 
 function empty(){return`${ttl('Welcome','Let’s set up '+esc(P().name))}${card('',`<div class="empty"><h2>${rc()?'Track your savings plans':'Track your daily money'}</h2><p>${rc()?'Add a plan for each policy or savings account, then record every deposit.':'Create a wallet, then log what comes in and goes out.'}<br>Everything stays on this device.</p><button class="btn acc" data-act="newwallet">${ico('wallet',20)} Create ${rc()?'a plan':'a wallet'}</button><button class="btn soft" data-act="import">Import CSV</button><button class="btn soft" data-act="restore">Restore a backup</button></div>`,{i:1})}`}
 
+function nudge(){const lb=S.set.lastBackup;const n=P().txns.length;if(n<20||(lb&&Date.now()-lb<14*DAY))return'';return`<button class="g card rise" style="--i:1;display:flex;align-items:center;gap:14px;width:100%;padding:16px" data-act="backup"><div class="wic" style="--c:var(--a2)">${ico('savings',18)}</div><div style="flex:1;min-width:0"><b style="display:block;font-size:14.5px">Back up your data</b><span class="sm">${lb?'Last backup was a while ago.':'You have not backed up yet.'} Tap to save a file.</span></div></button>`}
 function heroCard(label,total,ser,lv,pills){const c=cur();return`<section class="g card hero rise" style="--i:1">${waves(lv)}<div class="lbl"><span class="t">${label}</span></div><div class="big fit"><small>${esc(SYM[c]||c)}</small><span data-cu="${total}" data-mode="num">${nf(total)}</span></div><div class="row2">${pills}</div>${spark(ser,{h:96})}</section>`}
-function stripHtml(ser12){const b=BAL();const ws=P().wallets;
- return`<div class="strip rise" style="--i:2">${ws.map(w=>{const c=WCOL(w);const g=rc()&&w.goal>0;const s=ser12?balSeries([w.id],12,'m'):balSeries([w.id],30,'d');
-  return`<button class="g wc" data-act="wallet" data-id="${w.id}" style="--c:${c}"><div class="t"><div class="wic">${ico(w.type,18)}</div><span>${esc(w.name)}</span>${g?pr(b[w.id]/w.goal,c,Math.min(100,Math.round(b[w.id]/w.goal*100))+'%').replace('margin-top:6px','margin:0 0 0 auto;width:38px;height:38px'):''}</div><div class="a" data-cu="${b[w.id]}" data-cur="${w.cur}">${money(b[w.id],w.cur)}</div>${spark(s,{h:56,c,dot:false})}</button>`}).join('')}<button class="g wc add" data-act="newwallet">${ico('plus',26)}<span class="sm">Add ${LB().w1.toLowerCase()}</span></button></div>`}
+function stripHtml(ser12){const b=BAL();const all=VW().slice().sort((x,y)=>b[y.id]-b[x.id]);const ws=all.slice(0,4);
+ return`<div class="wgrid rise" style="--i:2">${ws.map(w=>{const c=WCOL(w);const g=rc()&&w.goal>0;const s=ser12?balSeries([w.id],12,'m'):balSeries([w.id],30,'d');
+  return`<button class="g wc" data-act="wallet" data-id="${w.id}" style="--c:${c}"><div class="t"><div class="wic">${ico(w.type,18)}</div><span>${esc(w.name)}</span>${g?pr(b[w.id]/w.goal,c,Math.min(100,Math.round(b[w.id]/w.goal*100))+'%').replace('margin-top:6px','margin:0 0 0 auto;width:38px;height:38px'):''}</div><div class="a" data-cu="${b[w.id]}" data-cur="${w.cur}">${money(b[w.id],w.cur)}</div>${spark(s,{h:56,c,dot:false})}</button>`}).join('')}${all.length>4?`<button class="g wc add" data-act="tab" data-v="wallets">${ico('wallet',24)}<span class="sm">See all ${all.length}</span></button>`:''}</div>`}
 
 function vToday(){
  const now=new Date(),h=now.getHours();const g=h<12?'Good morning':h<18?'Good afternoon':'Good evening';
@@ -173,10 +179,10 @@ function vToday(){
  if(!P().wallets.length)return empty();
  return rc()?todayRec(g,date):todayDaily(g,date)}
 function todayDaily(g,date){
- const b=BAL(),c=cur();const ids=P().wallets.filter(w=>w.cur===c).map(w=>w.id);const total=ids.reduce((s,i)=>s+b[i],0);
+ const b=BAL(),c=cur();const ids=VW().filter(w=>w.cur===c).map(w=>w.id);const total=ids.reduce((s,i)=>s+b[i],0);
  const s90=balSeries(ids,90,'d'),ser=s90.slice(-30);const mx=Math.max(...s90,total,1),mn=Math.min(...s90,total);const lv=Math.max(14,Math.min(88,(total-mn)/((mx-mn)||1)*70+16));
  const ms=range('m'),a=analyze(ms.from,ms.to);const delta=ser[ser.length-1]-ser[0];
- const pills=`<span class="pill ${delta>=0?'inc':'exp'}">${delta>=0?'▲':'▼'} ${compact(Math.abs(delta))} in 30 days</span><span class="pill">${P().wallets.length} ${P().wallets.length===1?'wallet':'wallets'}</span>`;
+ const pills=`<span class="pill ${delta>=0?'inc':'exp'}">${delta>=0?'▲':'▼'} ${compact(Math.abs(delta))} in 30 days</span><span class="pill">${VW().length} ${VW().length===1?'wallet':'wallets'}</span>`;
  const mxr=Math.max(a.earned,a.spent,a.saved,1);
  const wk=analyze(sd(Date.now())-6*DAY,sd(Date.now())+DAY);const td=sd(Date.now());
  const wb=[];for(let i=6;i>=0;i--){const d0=td-i*DAY;const dd=new Date(d0);wb.push({l:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dd.getDay()].slice(0,1),vals:[wk.days[d0]||0],cols:[i===0?'var(--a1)':'color-mix(in srgb,var(--a1) 35%,transparent)'],hi:i===0})}
@@ -190,7 +196,7 @@ function todayDaily(g,date){
  card('Top categories',top.length?hbars(top.map(x=>({code:x.k,name:cat(x.k).name,v:x.v,c:COLORS[x.k]||'#8e8e93',val:compact(x.v)})),tm):'<p class="sm">No spending yet this month.</p>',{i:6,a:'tab',av:'insights',al:'More'})+
  `<button class="story-card rise" style="--i:7" data-act="story"><div class="pl">${ico('play',20)}</div><div><b>Your ${MONTHS[new Date().getMonth()]} story</b><span>Six quick slides about your money</span></div></button>`+
  card('Recent',recs.length?recs.map(t=>txRow(t,rmx)).join(''):'<p class="sm">No entries yet. Tap + to add one.</p>',{i:8,a:'tab',av:'history',al:'See all'});
- return ttl(date,g)+`<div class="cols"><div>${left}</div><div>${right}</div></div>`}
+ return ttl(date,g)+nudge()+`<div class="cols"><div>${left}</div><div>${right}</div></div>`}
 
 function paceSvg(cu){const W=320,Hh=96,max=Math.max(1,...cu.cur,...cu.prv);const X=i=>i/(cu.dim-1)*W,Y=v=>Hh-6-(v/max)*(Hh-14);
  const p=arr=>arr.map((v,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)).join(' ');
@@ -203,24 +209,25 @@ function stackedMonths(n){const m=monthSeries(n);const ws=P().wallets;const mx=M
  const top=ws.map(w=>({w,t:m.reduce((s,x)=>s+(x.by[w.id]||0),0)})).sort((a,b)=>b.t-a.t).slice(0,5).map(x=>x.w);
  return`<div class="bars" style="height:150px">${m.map((x,i)=>{const segs=top.map(w=>({v:x.by[w.id]||0,c:colorOf(w.id)}));const other=x.inc-segs.reduce((s,q)=>s+q.v,0);if(other>0.5)segs.push({v:other,c:'#94a3b8'});return`<div class="c ${i===n-1?'hi':''}"><div class="p st" style="height:100%;justify-content:flex-start">${segs.filter(s=>s.v>0).map(s=>`<i style="--h:${(s.v/mx*100).toFixed(1)}%;--i:${i};background:${s.c}"></i>`).join('')}</div><em>${x.l}</em></div>`}).join('')}</div><div class="chips" style="margin-top:12px;flex-wrap:wrap">${top.map(w=>`<span class="pill"><i style="width:8px;height:8px;border-radius:50%;background:${colorOf(w.id)}"></i>${esc(w.name)}</span>`).join('')}</div>`}
 function todayRec(g,date){
- const b=BAL(),c=cur();const ids=P().wallets.filter(w=>w.cur===c).map(w=>w.id);const total=ids.reduce((s,i)=>s+b[i],0);
- const ser=balSeries(ids,18,'m');const goal=P().wallets.reduce((s,w)=>s+(w.goal||0),0);const lv=goal>0?Math.min(90,Math.max(14,total/goal*80+10)):Math.max(24,Math.min(88,total/(Math.max(...ser,1))*72+14));
+ const b=BAL(),c=cur();const ids=VW().filter(w=>w.cur===c).map(w=>w.id);const total=ids.reduce((s,i)=>s+b[i],0);
+ const ser=balSeries(ids,18,'m');const goal=VW().reduce((s,w)=>s+(w.goal||0),0);const lv=goal>0?Math.min(90,Math.max(14,total/goal*80+10)):Math.max(24,Math.min(88,total/(Math.max(...ser,1))*72+14));
  const ms=range('m'),a=analyze(ms.from,ms.to);const co=consistency();
- const pills=`<span class="pill inc">+${compact(a.earned)} this month</span><span class="pill">${P().wallets.length} ${P().wallets.length===1?'plan':'plans'}</span>`;
+ const pills=`<span class="pill inc">+${compact(a.earned)} this month</span><span class="pill">${VW().length} ${VW().length===1?'plan':'plans'}</span>`;
  const recs=P().txns.slice().sort((x,y)=>y.t-x.t).slice(0,6);const rmx=Math.max(1,...recs.map(t=>t.a));
  const left=heroCard(LB().tot,total,ser,lv,pills)+stripHtml(true)+card('Consistency',co.html,{i:3});
  const right=card('Monthly deposits',stackedMonths(12),{i:4})+`<button class="story-card rise" style="--i:5" data-act="story"><div class="pl">${ico('play',20)}</div><div><b>Your savings story</b><span>Five quick slides about your plans</span></div></button>`+card('Recent deposits',recs.length?recs.map(t=>txRow(t,rmx)).join(''):'<p class="sm">No entries yet. Tap + to record one.</p>',{i:6,a:'tab',av:'history',al:'See all'});
- return ttl(date,g)+`<div class="cols"><div>${left}</div><div>${right}</div></div>`}
+ return ttl(date,g)+nudge()+`<div class="cols"><div>${left}</div><div>${right}</div></div>`}
 
 function vWallets(){
  if(!P().wallets.length)return ttl(LB().wal,'Your '+LB().wal.toLowerCase())+card('',`<div class="empty"><h2>No ${LB().wal.toLowerCase()} yet</h2><p>Add your first ${LB().w1.toLowerCase()}.</p><button class="btn acc" data-act="newwallet">Create ${LB().w1.toLowerCase()}</button></div>`,{i:1});
- const b=BAL(),ws=P().wallets;const c=cur();const tot=ws.filter(w=>w.cur===c).reduce((s,w)=>s+Math.max(0,b[w.id]),0)||1;const a=range('m');
+ const b=BAL(),ws=VW();const c=cur();const tot=ws.filter(w=>w.cur===c).reduce((s,w)=>s+Math.max(0,b[w.id]),0)||1;const a=range('m');
  const list=ws.map((w,i)=>{let inn=0,out=0;for(const t of P().txns){if(t.t<a.from)continue;if(t.k==='i'&&t.w===w.id&&t.c!=='AD')inn+=t.a;else if(t.k==='e'&&t.w===w.id&&t.c!=='AD')out+=t.a;else if(t.k==='t'){if(t.w===w.id)out+=t.a;if(t.to===w.id)inn+=t.a}}const mx=Math.max(inn,out,1);const col=WCOL(w);
   const s=rc()?balSeries([w.id],12,'m'):balSeries([w.id],45,'d');const share=Math.max(0,b[w.id])/tot;
   return`<button class="g card rise" style="--i:${i+1};display:block;width:100%;--c:${col}" data-act="wallet" data-id="${w.id}"><div style="display:flex;align-items:center;gap:12px;margin-bottom:16px"><div class="wic">${ico(w.type,20)}</div><div style="min-width:0;flex:1"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:16px">${esc(w.name)}</b><span class="sm">${(WTYPES.find(t=>t[0]===w.type)||[])[1]} · ${w.cur}</span></div>${pr(w.goal>0?b[w.id]/w.goal:share,col,Math.round((w.goal>0?Math.min(1,b[w.id]/w.goal):share)*100)+'%')}</div>
   <div style="font-size:clamp(26px,8vw,34px);font-weight:800;letter-spacing:-1px;white-space:nowrap;overflow:hidden" class="fit" data-cu="${b[w.id]}" data-cur="${w.cur}">${money(b[w.id],w.cur)}</div><p class="sm" style="margin:2px 0 6px">${w.goal>0?`Goal ${money(w.goal,w.cur)}`:`${Math.round(share*100)}% of all ${LB().wal.toLowerCase()}`}</p>${spark(s,{h:64,c:col})}
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px"><div><span class="sm">In this month</span><b class="inc" style="display:block;font-size:14px">${compact(inn,w.cur)}</b>${trk(inn/mx,'var(--inc)')}</div><div><span class="sm">Out this month</span><b class="exp" style="display:block;font-size:14px">${compact(out,w.cur)}</b>${trk(out/mx,'var(--exp)')}</div></div></button>`}).join('');
- return ttl(LB().wal,'Your '+LB().wal.toLowerCase())+`<div class="cols"><div>${list}</div></div><button class="btn soft rise" style="--i:9" data-act="newwallet">${ico('plus',18)} Add ${LB().w1.toLowerCase()}</button>`}
+ return ttl(LB().wal,'Your '+LB().wal.toLowerCase())+`<div class="cols"><div>${list}</div></div><button class="btn soft rise" style="--i:9" data-act="newwallet">${ico('plus',18)} Add ${LB().w1.toLowerCase()}</button>${hiddenCard()}`}
+function hiddenCard(){const hs=P().wallets.filter(w=>w.hidden);if(!hs.length)return'';return`<section class="g card rise" style="--i:10;margin-top:14px"><div class="lbl"><span class="t">Hidden (${hs.length})</span></div>${hs.map(w=>`<div class="row"><div class="wic">${ico(w.type,18)}</div><div class="m"><b>${esc(w.name)}</b><span>Not in totals or insights</span></div><button class="pill" data-act="unhide" data-id="${w.id}">Show</button></div>`).join('')}</section>`}
 
 function heatHtml(){const td=sd(Date.now());const an=analyze(td-34*DAY,td+DAY);const mx=Math.max(1,...Object.values(an.days));const first=new Date(td-34*DAY);const off=(first.getDay()+6)%7;
  let h=`<div class="hd7">${DOW.map(d=>`<span>${d.slice(0,1)}</span>`).join('')}</div><div class="heat">`;for(let i=0;i<off;i++)h+='<i style="visibility:hidden"></i>';
@@ -255,33 +262,38 @@ function vInsights(){
  <div class="kpis rise" style="--i:2">${kp.map(k=>`<div class="g card"><div class="sm">${k[0]}</div><b class="fit ${k[2]}" data-cu="${k[1]}" data-mode="${k[0]==='Net'?'csign':'compact'}" data-cur="${c}">${compact(k[1],c,k[0]==='Net')}</b></div>`).join('')}</div>
  <div class="cols"><div>${ringsCard}${monthsCard}${growth}${card(rc()?'Where it goes':'Where it goes',don,{i:5})}</div><div>${wdCard}${heat}${hab}${memos}</div></div>`}
 
+const mkey=t=>{const d=new Date(t);return d.getFullYear()*12+d.getMonth()};
+const mlabel=k=>MONTHS[k%12]+' '+Math.floor(k/12);
+function monthKeys(){const set=new Set(P().txns.map(t=>mkey(t.t)));return[...set].sort((a,b)=>b-a)}
 function vHistory(){
- const L=LB();
+ const L=LB();const mk=monthKeys();if(H.m==='cur'){const nk=mkey(Date.now());H.m=mk.includes(nk)?nk:(mk[0]!=null?mk[0]:'all')}
  return ttl('Everything you logged','History')+
  `<div class="search rise" style="--i:1">${ico('search',18)}<input class="field" id="q" placeholder="Search memo, category or amount" value="${esc(H.q)}"></div>
- <div class="chips rise" style="margin-bottom:12px;--i:2">${[['all','All'],['e',L.exp+'s'],['i',rc()?'Deposits':'Income'],['t','Transfers']].map(([k,v])=>`<button class="chip ${H.f===k?'on':''}" data-act="hf" data-v="${k}">${v}</button>`).join('')}${P().wallets.length>1?`<button class="chip ${H.w==='all'?'on':''}" data-act="hw" data-v="all">All ${L.wal.toLowerCase()}</button>`+P().wallets.map(w=>`<button class="chip ${H.w===w.id?'on':''}" data-act="hw" data-v="${w.id}">${esc(w.name)}</button>`).join(''):''}</div>
+ <div class="chips rise" style="margin-bottom:8px;--i:2"><button class="chip ${H.m==='all'?'on':''}" data-act="hm" data-v="all">All time</button>${mk.map(k=>`<button class="chip ${H.m===k?'on':''}" data-act="hm" data-v="${k}">${MONTHS[k%12].slice(0,3)} ${String(Math.floor(k/12)).slice(2)}</button>`).join('')}</div>
+ <div class="chips rise" style="margin-bottom:12px;--i:3">${[['all','All'],['e',L.exp+'s'],['i',rc()?'Deposits':'Income'],['t','Transfers']].map(([k,v])=>`<button class="chip ${H.f===k?'on':''}" data-act="hf" data-v="${k}">${v}</button>`).join('')}${P().wallets.length>1?P().wallets.map(w=>`<button class="chip ${H.w===w.id?'on':''}" data-act="hw" data-v="${H.w===w.id?'all':w.id}">${esc(w.name)}</button>`).join(''):''}</div>
  <div id="hl">${histList()}</div>`}
-function histFilter(){const q=H.q.trim().toLowerCase();return P().txns.filter(t=>(H.f==='all'||t.k===H.f)&&(H.w==='all'||t.w===H.w||t.to===H.w)&&(!q||(t.m||'').toLowerCase().includes(q)||cat(t.c).name.toLowerCase().includes(q)||String(t.a).includes(q))).sort((a,b)=>b.t-a.t)}
+function histFilter(){const q=H.q.trim().toLowerCase();return P().txns.filter(t=>(H.m==='all'||mkey(t.t)===H.m)&&(H.f==='all'||t.k===H.f)&&(H.w==='all'||t.w===H.w||t.to===H.w)&&(!q||(t.m||'').toLowerCase().includes(q)||cat(t.c).name.toLowerCase().includes(q)||String(t.a).includes(q))).sort((a,b)=>b.t-a.t)}
 function histList(){
  const all=histFilter();const total=all.length;const L=all.slice(0,H.n);
  if(!total)return'<p class="sm" style="text-align:center;padding:40px 0">Nothing found.</p>';
- const inn=all.filter(t=>t.k==='i').reduce((s,t)=>s+t.a,0),out=all.filter(t=>t.k==='e').reduce((s,t)=>s+t.a,0),mx=Math.max(inn,out,1);
- const sum=`<section class="g card" style="padding:18px"><div class="lbl"><span class="t">${total.toLocaleString()} ${total===1?'entry':'entries'}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><span class="sm">${rc()?'Deposits':'In'}</span><b class="inc" style="display:block;font-size:18px" data-cu="${inn}" data-mode="compact" data-cur="${cur()}">${compact(inn)}</b>${trk(inn/mx,'var(--inc)')}</div><div><span class="sm">${rc()?'Withdrawals':'Out'}</span><b class="exp" style="display:block;font-size:18px" data-cu="${out}" data-mode="compact" data-cur="${cur()}">${compact(out)}</b>${trk(out/mx,'var(--exp)')}</div></div></section>`;
- const rmx=Math.max(1,...L.map(t=>t.a));const groups=[];
- for(const t of L){const k=sd(t.t);if(!groups.length||groups[groups.length-1].k!==k)groups.push({k,items:[]});groups[groups.length-1].items.push(t)}
+ const rmx=Math.max(1,...L.map(t=>t.a));const months=[];
+ for(const t of L){const mk=mkey(t.t);let m=months[months.length-1];if(!m||m.k!==mk){m={k:mk,days:[],items:[]};months.push(m)}m.items.push(t);const dk=sd(t.t);let d=m.days[m.days.length-1];if(!d||d.k!==dk){d={k:dk,items:[]};m.days.push(d)}d.items.push(t)}
  const td=sd(Date.now());
- let out2=groups.map(g=>{const net=g.items.reduce((s,t)=>s+(t.k==='i'?t.a:t.k==='e'?-t.a:0),0);const lab=g.k===td?'Today':g.k===td-DAY?'Yesterday':new Date(g.k).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:new Date(g.k).getFullYear()===new Date().getFullYear()?undefined:'numeric'});return`<div class="day"><span>${lab}</span><span>${net?money(net,undefined,true):''}</span></div><div class="g card" style="padding:6px 16px;margin-bottom:0;border-radius:26px">${g.items.map(t=>txRow(t,rmx)).join('')}</div>`}).join('');
- if(total>L.length)out2+=`<button class="btn soft" style="margin-top:18px" data-act="more">Show more (${total-L.length} left)</button>`;
- return sum+out2}
+ let out=months.map(m=>{const full=all.filter(t=>mkey(t.t)===m.k);const inn=full.filter(t=>t.k==='i'&&!SYSC(t.c)).reduce((s,t)=>s+t.a,0),outv=full.filter(t=>t.k==='e'&&!SYSC(t.c)).reduce((s,t)=>s+t.a,0),mx=Math.max(inn,outv,1);
+  const head=`<section class="g card" style="padding:18px;margin-top:6px"><div class="lbl"><span class="t">${mlabel(m.k)}</span><span class="sm">${full.length} ${full.length===1?'entry':'entries'}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><span class="sm">${rc()?'Deposits':'In'}</span><b class="inc" style="display:block;font-size:18px" data-cu="${inn}" data-mode="compact" data-cur="${cur()}">${compact(inn)}</b>${trk(inn/mx,'var(--inc)')}</div><div><span class="sm">${rc()?'Withdrawals':'Out'}</span><b class="exp" style="display:block;font-size:18px" data-cu="${outv}" data-mode="compact" data-cur="${cur()}">${compact(outv)}</b>${trk(outv/mx,'var(--exp)')}</div></div></section>`;
+  const days=m.days.map(g=>{const net=g.items.reduce((s,t)=>s+(t.k==='i'?t.a:t.k==='e'?-t.a:0),0);const lab=g.k===td?'Today':g.k===td-DAY?'Yesterday':new Date(g.k).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});return`<div class="day"><span>${lab}</span><span>${net?money(net,undefined,true):''}</span></div><div class="g card" style="padding:6px 16px;margin-bottom:0;border-radius:26px">${g.items.map(t=>txRow(t,rmx)).join('')}</div>`}).join('');
+  return head+days}).join('');
+ if(total>L.length)out+=`<button class="btn soft" style="margin-top:18px" data-act="more">Show more (${total-L.length} left)</button>`;
+ return out}
 
 function vSettings(){
  const st=S.set,p=P();
  return ttl('Make it yours','Settings')+
- card('Profiles',S.profiles.map(q=>`<button class="row" data-act="switch" data-id="${q.id}"><div class="av" style="width:40px;height:40px">${esc(q.name.slice(0,1).toUpperCase())}</div><div class="m"><b>${esc(q.name)}</b><span>${q.kind==='records'?'Savings records':'Daily spending'} · ${q.wallets.length} ${q.kind==='records'?'plans':'wallets'} · ${q.txns.length.toLocaleString()} entries</span></div>${q.id===S.active?`<span class="pill inc">Active</span>`:''}</button>`).join('')+`<button class="btn soft" style="margin-top:12px" data-act="newprofile">${ico('plus',18)} New profile</button><button class="btn soft" data-act="manage">Rename or delete “${esc(p.name)}”</button>`,{i:1})+
+ card('Profiles',S.profiles.map(q=>`<button class="row" data-act="switch" data-id="${q.id}"><div class="av" style="width:40px;height:40px">${esc(q.name.slice(0,1).toUpperCase())}</div><div class="m"><b>${esc(q.name)}</b><span>${q.kind==='records'?'Savings records':'Daily spending'} · ${q.wallets.length} ${q.kind==='records'?'plans':'wallets'} · ${q.txns.length.toLocaleString()} entries</span></div>${q.id===S.active?`<span class="pill inc">Active</span>`:''}</button>`).join('')+`<button class="btn soft" style="margin-top:12px" data-act="newprofile">${ico('plus',18)} New profile</button><button class="btn soft" data-act="manage" data-id="${p.id}">${ico('edit',18)} Rename or delete “${esc(p.name)}”</button>`,{i:1})+
  card('Appearance',`<div class="seg">${[['auto','Auto'],['light','White'],['dark','Dark']].map(([k,v])=>`<button class="${st.theme===k?'on':''}" data-act="theme" data-v="${k}">${v}</button>`).join('')}</div>`,{i:2})+
  card('Currency for '+esc(p.name),`<select class="field" id="curSel">${CURS.map(c=>`<option ${c===p.cur?'selected':''}>${c}</option>`).join('')}</select><p class="sm" style="margin-top:8px">Totals and insights count ${rc()?'plans':'wallets'} in this currency.</p>`,{i:3})+
- card('Data',`<div class="set"><button class="row" data-act="cats"><div class="m"><b>Categories</b><span>Rename or add. Letters and numbers only</span></div></button><button class="row" data-act="import"><div class="m"><b>Import CSV into ${esc(p.name)}</b><span>Your old app format. Duplicates are skipped</span></div></button><button class="row" data-act="export"><div class="m"><b>Export ${esc(p.name)} as CSV</b><span>${p.txns.length.toLocaleString()} entries</span></div></button><button class="row" data-act="backup"><div class="m"><b>Back up everything</b><span>One file with all profiles. Keep it safe</span></div></button><button class="row" data-act="restore"><div class="m"><b>Restore a backup</b><span>Replaces everything on this device</span></div></button><button class="row" data-act="wipe"><div class="m"><b class="exp">Erase this profile</b><span>Removes its wallets and entries</span></div></button></div>`,{i:4})+
- card('Install',`<p class="sm" style="line-height:1.55">iPhone: open in Safari, tap Share, then Add to Home Screen. Open it from the home screen icon and import your data there.<br>Android: open in Chrome, tap the menu, then Install app.<br>Data is saved only on this device, so back up now and then.</p><div id="inst"></div>`,{i:5})}
+ card('Data',`<div class="set"><button class="row" data-act="cats"><div class="m"><b>Categories</b><span>Rename or add. Letters and numbers only</span></div></button><button class="row" data-act="import"><div class="m"><b>Import CSV into ${esc(p.name)}</b><span>Your old app format. Duplicates are skipped</span></div></button><button class="row" data-act="export"><div class="m"><b>Export ${esc(p.name)} as CSV</b><span>${p.txns.length.toLocaleString()} entries</span></div></button><button class="row" data-act="backup"><div class="m"><b>Back up everything</b><span>${S.set.lastBackup?'Last backup '+new Date(S.set.lastBackup).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'Never backed up'}. One file with all profiles</span></div></button><button class="row" data-act="restore"><div class="m"><b>Restore a backup</b><span>Pick a backup file. A CSV is added to this profile instead</span></div></button><button class="row" data-act="wipe"><div class="m"><b class="exp">Erase this profile</b><span>Removes its wallets and entries</span></div></button></div>`,{i:4})+
+ card('Install',`<p class="sm" style="line-height:1.55">iPhone: open in Safari, tap Share, then Add to Home Screen. Open it from the home screen icon and import your data there.<br>Android: open in Chrome, tap the menu, then Install app.<br>Data is saved only on this device, so back up now and then.</p><div id="inst"></div><p class="sm" style="margin-top:10px">Version ${VER}. Updates arrive on their own when you open the app online. Your data is never touched by updates.</p>`,{i:5})}
 
 function vCats(){
  const p=P();const row=c=>`<div class="cr"><div class="tile" style="--c:${COLORS[c.code]||'#8e8e93'};width:40px;height:40px;border-radius:14px;font-size:12px">${esc(c.code)}</div><input class="field" data-cat="${esc(c.code)}" value="${esc(c.name)}" maxlength="24"></div>`;
@@ -291,7 +303,7 @@ function vCats(){
 
 /* ---------- sheets ---------- */
 let SH=null;const PAD='<div class="pad"></div>';
-function sheet(html,mount){closeSheet(true);const L=$('#layer');L.innerHTML=`<div class="scrim"></div><div class="sheet" role="dialog"><div class="grab"></div>${html}</div>`;const sc=$('.scrim',L),sh=$('.sheet',L);sc.onclick=()=>closeSheet();SH=sh;requestAnimationFrame(()=>requestAnimationFrame(()=>{sc.classList.add('on');sh.classList.add('on')}));mount&&mount(sh);return sh}
+function sheet(html,mount){closeSheet(true);const L=$('#layer');L.innerHTML=`<div class="scrim"></div><div class="sheet" role="dialog">${SXB}<div class="grab"></div>${html}</div>`;const sc=$('.scrim',L),sh=$('.sheet',L);sc.onclick=()=>closeSheet();SH=sh;requestAnimationFrame(()=>requestAnimationFrame(()=>{sc.classList.add('on');sh.classList.add('on')}));mount&&mount(sh);return sh}
 function closeSheet(now){const L=$('#layer');const sc=$('.scrim',L),sh=$('.sheet',L);SH=null;if(!sh)return;if(now){L.innerHTML='';return}sc.classList.remove('on');sh.classList.remove('on');setTimeout(()=>{if(!SH)L.innerHTML=''},450)}
 const cleanW=s=>/^[A-Za-z0-9][A-Za-z0-9 ()&'.\-]{1,39}$/.test(s.trim());
 const cleanOK=s=>/^[A-Za-z0-9][A-Za-z0-9 ]{1,23}$/.test(s.trim());
@@ -299,7 +311,7 @@ const cleanOK=s=>/^[A-Za-z0-9][A-Za-z0-9 ]{1,23}$/.test(s.trim());
 let A=null;
 function openAdd(t,pre){
  if(!P().wallets.length){toast('Create a '+LB().w1.toLowerCase()+' first');setTab('wallets');return openWallet()}
- const defW=P().wallets[0].id;
+ const defW=(VW()[0]||P().wallets[0]).id;
  A=t?{edit:t.id,k:t.k,amt:String(t.a),w:t.w,to:t.to||'',c:t.c,m:t.m||'',t:t.t}:Object.assign({edit:null,k:rc()?'i':'e',amt:'',w:defW,to:'',c:'',m:'',t:Date.now()},pre||{});
  sheet(addHtml(),mountAdd)}
 function addHtml(){
@@ -309,8 +321,8 @@ function addHtml(){
  <div class="seg" style="margin-bottom:4px">${(rc()?[['i','Deposit'],['e','Withdraw'],['t','Transfer']]:[['e','Expense'],['i','Income'],['t','Transfer']]).map(([k,v])=>`<button class="${A.k===k?'on':''}" data-a="k" data-v="${k}">${v}</button>`).join('')}</div>
  <div class="amt"><div class="big"><span id="amtv" class="${A.k==='i'?'inc':A.k==='e'?'exp':''}">${esc(SYM[(w||{}).cur||cur()]||'')}${A.amt||'0'}</span></div></div>
  <div class="kp">${[1,2,3,4,5,6,7,8,9,'.',0,'del'].map(k=>`<button data-a="key" data-v="${k}" aria-label="${k}">${k==='del'?ico('del',24):k}</button>`).join('')}</div>
- <div class="lbl"><span>${A.k==='t'?'From':L.w1}</span></div><div class="chips" style="margin-bottom:14px">${P().wallets.map(x=>`<button class="chip ${A.w===x.id?'on':''}" data-a="w" data-v="${x.id}">${esc(x.name)}</button>`).join('')}</div>
- ${A.k==='t'?`<div class="lbl"><span>To</span></div><div class="chips" style="margin-bottom:14px">${P().wallets.filter(x=>x.id!==A.w).map(x=>`<button class="chip ${A.to===x.id?'on':''}" data-a="to" data-v="${x.id}">${esc(x.name)}</button>`).join('')||'<span class="sm">Add another '+L.w1.toLowerCase()+' to transfer.</span>'}</div>`:`<div class="lbl"><span>Category</span></div><div class="cg">${cs.map(c=>`<button class="${A.c===c.code?'on':''}" style="--c:${COLORS[c.code]||'#8e8e93'}" data-a="c" data-v="${c.code}"><div class="tile" style="--c:${COLORS[c.code]||'#8e8e93'}">${esc(c.code)}</div><span>${esc(c.name)}</span></button>`).join('')}</div>`}
+ <div class="lbl"><span>${A.k==='t'?'From':L.w1}</span></div><div class="chips" style="margin-bottom:14px">${P().wallets.filter(x=>!x.hidden||x.id===A.w).map(x=>`<button class="chip ${A.w===x.id?'on':''}" data-a="w" data-v="${x.id}">${esc(x.name)}</button>`).join('')}</div>
+ ${A.k==='t'?`<div class="lbl"><span>To</span></div><div class="chips" style="margin-bottom:14px">${P().wallets.filter(x=>x.id!==A.w&&(!x.hidden||x.id===A.to)).map(x=>`<button class="chip ${A.to===x.id?'on':''}" data-a="to" data-v="${x.id}">${esc(x.name)}</button>`).join('')||'<span class="sm">Add another '+L.w1.toLowerCase()+' to transfer.</span>'}</div>`:`<div class="lbl"><span>Category</span></div><div class="cg">${cs.map(c=>`<button class="${A.c===c.code?'on':''}" style="--c:${COLORS[c.code]||'#8e8e93'}" data-a="c" data-v="${c.code}"><div class="tile" style="--c:${COLORS[c.code]||'#8e8e93'}">${esc(c.code)}</div><span>${esc(c.name)}</span></button>`).join('')}</div>`}
  <div class="lbl"><span>Memo</span></div><input class="field" id="memo" placeholder="What was it for?" maxlength="80" value="${esc(A.m)}" autocomplete="off"><div class="chips" id="sug" style="margin:8px 0 12px"></div>
  <div class="lbl"><span>When</span></div><input class="field" type="datetime-local" id="when" value="${dt}">
  <div class="sticky"><button class="btn acc" data-a="save">${A.edit?'Save changes':'Save entry'}</button>${A.edit?`<button class="btn red" data-a="del">Delete entry</button>`:''}</div>`}
@@ -326,13 +338,21 @@ function mountAdd(sh){
   else if(a==='del'){if(confirm('Delete this entry?')){P().txns=P().txns.filter(t=>t.id!==A.edit);dirty();closeSheet();render();toast('Deleted')}}
   else{if(a==='k'){A.k=v;if(v!=='t'&&!P().cats.find(c=>c.code===A.c&&c.inc===(v==='i')))A.c=''}else if(a==='w'){A.w=v;if(A.to===v)A.to=''}else if(a==='to')A.to=v;else if(a==='c')A.c=v;redraw(sh)}};
  sug()}
-function redraw(sh){const top=sh.scrollTop;sh.innerHTML='<div class="grab"></div>'+addHtml();mountAdd(sh);sh.scrollTop=top}
+function redraw(sh){const top=sh.scrollTop;sh.innerHTML=SXB+'<div class="grab"></div>'+addHtml();mountAdd(sh);sh.scrollTop=top}
 function saveAdd(){
  const a=parseFloat(A.amt);if(!(a>0)){toast('Enter an amount');buzz();return}
  if(A.k==='t'){if(!A.to){toast('Choose where it goes');return}}else if(!A.c){toast('Pick a category');return}
  const t={id:A.edit||uid(),t:A.t,k:A.k,c:A.k==='t'?'TX':A.c,a:Math.round(a*100)/100,m:(A.m||'').trim(),w:A.w,to:A.k==='t'?A.to:''};
  if(A.edit){const i=P().txns.findIndex(x=>x.id===A.edit);P().txns[i]=t}else P().txns.push(t);
  dirty();closeSheet();okAnim();buzz();render();toast('Saved')}
+
+function openDetail(t){
+ const w=WM()[t.w]||{name:'?',cur:cur()},c=cat(t.k==='t'?'TX':t.c);const col=t.k==='t'?'#8e8e93':(COLORS[t.c]||'#8e8e93');const d=new Date(t.t);
+ const amt=t.k==='t'?money(t.a,w.cur):money(t.k==='e'?-t.a:t.a,w.cur,true);const kind=t.k==='t'?'Transfer':t.k==='i'?LB().inc:LB().exp;
+ const row=(a,b)=>`<div class="row"><div class="m"><span style="margin:0">${a}</span><b>${b}</b></div></div>`;
+ sheet(`<div style="text-align:center;margin:8px 0 18px"><div class="tile" style="--c:${col};margin:0 auto 12px;width:58px;height:58px;border-radius:20px;font-size:18px">${esc(String(t.k==='t'?'TX':t.c).slice(0,2))}</div><div class="big ${t.k==='i'?'inc':t.k==='e'?'exp':''}" style="font-size:clamp(34px,10vw,46px);font-weight:800;letter-spacing:-1.5px;white-space:nowrap">${amt}</div><p class="sm" style="margin-top:6px">${esc(t.m||c.name)}</p></div><div class="card" style="background:var(--chip);box-shadow:none;border:0;padding:6px 18px">${row('Type',kind)}${t.k==='t'?'':row('Category',esc(c.name))}${row(t.k==='t'?'From':LB().w1,esc(w.name))}${t.k==='t'?row('To',esc((WM()[t.to]||{}).name||'?')):''}${row('Date',d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+' at '+d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}))}${t.m?row('Memo',esc(t.m)):''}</div><div class="sticky"><button class="btn acc" id="de">${ico('edit',18)} Edit</button><button class="btn red" id="dd">Delete</button></div>`,sh=>{
+  $('#de',sh).onclick=()=>{closeSheet(true);openAdd(t)};
+  $('#dd',sh).onclick=()=>{if(confirm('Delete this entry?')){P().txns=P().txns.filter(x=>x.id!==t.id);dirty();closeSheet();render();toast('Deleted')}}})}
 
 function openWallet(w){
  const L=LB();
@@ -344,23 +364,25 @@ function openWallet(w){
  <button class="btn acc" id="wadd">${ico('plus',18)} Add entry</button><button class="btn soft" id="wxf">Transfer money</button>
  <div class="lbl" style="margin-top:20px"><span>Set actual balance</span></div><input class="field" id="wb" inputmode="decimal" placeholder="${nf(b)}"><button class="btn soft" id="wset" style="margin-top:10px">Match this balance</button><p class="sm" style="margin:8px 4px 0">Adds one adjustment entry so the balance equals what is really there.</p>
  ${rc()?`<div class="lbl" style="margin-top:20px"><span>Goal</span></div><input class="field" id="wg" inputmode="decimal" value="${w.goal||''}" placeholder="0.00"><button class="btn soft" id="wgs" style="margin-top:10px">Save goal</button>`:''}
+ <button class="btn soft" id="whd" style="margin-top:20px">${ico('eye',18)} ${w.hidden?'Show in totals again':'Hide from totals and lists'}</button><p class="sm" style="margin:8px 4px 0">A hidden ${L.w1.toLowerCase()} stays in History but is left out of totals and insights.</p>
  <div class="lbl" style="margin-top:20px"><span>Rename</span></div><input class="field" id="wr" value="${esc(w.name)}" maxlength="40"><button class="btn soft" id="wren" style="margin-top:10px">Save name</button><div class="err" id="we"></div><button class="btn red" id="wdel" style="margin-top:20px">Delete ${L.w1.toLowerCase()}</button>${PAD}`,sh=>{
   $('#wadd',sh).onclick=()=>{closeSheet(true);openAdd(null,{w:w.id})};
   $('#wxf',sh).onclick=()=>{closeSheet(true);openAdd(null,{w:w.id,k:'t'})};
   $('#wset',sh).onclick=()=>{const v=parseFloat($('#wb',sh).value);if(isNaN(v)){toast('Type the real balance');return}const d=Math.round((v-b)*100)/100;if(!d){toast('Already matches');return}P().txns.push({id:uid(),t:Date.now(),k:d>0?'i':'e',c:'AD',a:Math.abs(d),m:'Balance adjustment',w:w.id,to:''});dirty();closeSheet();okAnim();render()};
+  $('#whd',sh).onclick=()=>{w.hidden=!w.hidden;dirty();closeSheet();render();toast(w.hidden?'Hidden':'Visible again')};
   const gs=$('#wgs',sh);if(gs)gs.onclick=()=>{w.goal=parseFloat($('#wg',sh).value)||0;dirty();closeSheet();render();toast('Goal saved')};
   $('#wren',sh).onclick=()=>{const n=$('#wr',sh).value.trim();if(!cleanW(n)){$('#we',sh).textContent='Use 2 to 40 letters, numbers or spaces.';return}if(P().wallets.some(x=>x.id!==w.id&&x.name.toLowerCase()===n.toLowerCase())){$('#we',sh).textContent='That name is taken.';return}w.name=n;dirty();closeSheet();render();toast('Renamed')};
   $('#wdel',sh).onclick=()=>{const n=P().txns.filter(t=>t.w===w.id||t.to===w.id).length;if(confirm(`Delete ${w.name} and its ${n} entries?`)){P().wallets=P().wallets.filter(x=>x.id!==w.id);P().txns=P().txns.filter(t=>t.w!==w.id&&t.to!==w.id);dirty();closeSheet();render();toast('Deleted')}}})}
 
 function openProfiles(){
- const rows=S.profiles.map(q=>{const old=S.active;const tot=q.wallets.length;let bal=0;{const sv=S.active;S.active=q.id;_bal=_wm=_cm=null;const b=BAL();bal=q.wallets.filter(w=>w.cur===q.cur).reduce((s,w)=>s+b[w.id],0);S.active=sv;_bal=_wm=_cm=null}return`<button class="pf ${q.id===S.active?'on':''}" data-id="${q.id}" style="${q.kind==='records'?'--a1:#10b981;--a2:#14b8a6':''}"><i class="av">${esc(q.name.slice(0,1).toUpperCase())}</i><div class="m"><b>${esc(q.name)}</b><span>${q.kind==='records'?'Savings records':'Daily spending'} · ${tot} ${q.kind==='records'?'plans':'wallets'}</span></div><div class="r">${compact(bal,q.cur)}</div></button>`}).join('');
- sheet(`<h2>Profiles</h2>${rows}<button class="btn soft" id="np">${ico('plus',18)} New profile</button>${PAD}`,sh=>{sh.onclick=e=>{const b=e.target.closest('.pf');if(b){switchProfile(b.dataset.id);closeSheet();return}if(e.target.closest('#np'))openNewProfile()}})}
-function switchProfile(id){if(id===S.active)return;S.active=id;PER=P().kind==='records'?'y':'m';H={q:'',f:'all',w:'all',n:60};_bal=_wm=_cm=null;save();shell();if(TAB==='cats')TAB='settings';render();scrollTo(0,0)}
+ const rows=S.profiles.map(q=>{const old=S.active;const tot=q.wallets.length;let bal=0;{const sv=S.active;S.active=q.id;_bal=_wm=_cm=null;const b=BAL();bal=q.wallets.filter(w=>w.cur===q.cur).reduce((s,w)=>s+b[w.id],0);S.active=sv;_bal=_wm=_cm=null}return`<div class="pfw"><button class="pf ${q.id===S.active?'on':''}" data-id="${q.id}" style="${q.kind==='records'?'--a1:#10b981;--a2:#14b8a6':''}"><i class="av">${esc(q.name.slice(0,1).toUpperCase())}</i><div class="m"><b>${esc(q.name)}</b><span>${q.kind==='records'?'Savings records':'Daily spending'} · ${tot} ${q.kind==='records'?'plans':'wallets'} · ${compact(bal,q.cur)}</span></div></button><button class="pfe" data-edit="${q.id}" aria-label="Rename">${ico('edit',18)}</button></div>`}).join('');
+ sheet(`<h2>Profiles</h2>${rows}<button class="btn soft" id="np">${ico('plus',18)} New profile</button>${PAD}`,sh=>{sh.onclick=e=>{const ed=e.target.closest('[data-edit]');if(ed){openManage(S.profiles.find(q=>q.id===ed.dataset.edit));return}const b=e.target.closest('.pf');if(b){switchProfile(b.dataset.id);closeSheet();return}if(e.target.closest('#np'))openNewProfile()}})}
+function switchProfile(id){if(id===S.active)return;S.active=id;PER=P().kind==='records'?'y':'m';H={q:'',f:'all',w:'all',n:120,m:'cur'};_bal=_wm=_cm=null;save();shell();if(TAB==='cats')TAB='settings';render();scrollTo(0,0)}
 function openNewProfile(){
  sheet(`<h2>New profile</h2><div class="lbl"><span>Name</span></div><input class="field" id="pn" placeholder="e.g. Business" maxlength="24" autocomplete="off"><div class="err" id="pe"></div><div class="lbl" style="margin-top:16px"><span>Kind</span></div><div class="seg" id="pk"><button class="on" data-k="daily">Daily spending</button><button data-k="records">Savings records</button></div><p class="sm" style="margin:8px 4px 0">Daily spending tracks income and expenses. Savings records keeps a log of deposits into plans, like policies and savings accounts.</p><div class="lbl" style="margin-top:16px"><span>Currency</span></div><select class="field" id="pc">${CURS.map(c=>`<option ${c===cur()?'selected':''}>${c}</option>`).join('')}</select><div class="sticky"><button class="btn acc" id="pcr">Create profile</button></div>`,sh=>{
   let kind='daily';$('#pk',sh).onclick=e=>{const b=e.target.closest('[data-k]');if(!b)return;kind=b.dataset.k;sh.querySelectorAll('#pk button').forEach(x=>x.classList.toggle('on',x===b))};
   $('#pcr',sh).onclick=()=>{const n=$('#pn',sh).value.trim();if(!cleanOK(n)){$('#pe',sh).textContent='Use 2 to 24 letters or numbers.';return}if(S.profiles.some(p=>p.name.toLowerCase()===n.toLowerCase())){$('#pe',sh).textContent='That name is taken.';return}const p=newProfile(n,kind,$('#pc',sh).value);S.profiles.push(p);closeSheet(true);switchProfile(p.id);S.active=p.id;save();okAnim();toast('Profile created')}})}
-function openManage(){const p=P();
+function openManage(p){p=p||P();
  sheet(`<h2>${esc(p.name)}</h2><div class="lbl"><span>Rename</span></div><input class="field" id="rn" value="${esc(p.name)}" maxlength="24"><div class="err" id="re"></div><button class="btn soft" id="rs" style="margin-top:10px">Save name</button>${S.profiles.length>1?`<button class="btn red" id="rd" style="margin-top:20px">Delete this profile</button>`:'<p class="sm" style="margin-top:14px">You need at least one profile.</p>'}${PAD}`,sh=>{
   $('#rs',sh).onclick=()=>{const n=$('#rn',sh).value.trim();if(!cleanOK(n)){$('#re',sh).textContent='Use 2 to 24 letters or numbers.';return}if(S.profiles.some(q=>q!==p&&q.name.toLowerCase()===n.toLowerCase())){$('#re',sh).textContent='That name is taken.';return}p.name=n;dirty();closeSheet();render();toast('Renamed')};
   const rd=$('#rd',sh);if(rd)rd.onclick=()=>{if(confirm(`Delete ${p.name} with ${p.txns.length} entries? This cannot be undone.`)){S.profiles=S.profiles.filter(q=>q!==p);S.active=S.profiles[0].id;dirty();closeSheet(true);shell();setTab('settings');toast('Profile deleted')}}})}
@@ -405,8 +427,10 @@ async function shareFile(name,text,type){const f=new File([text],name,{type});
  try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f]});return}}catch(e){if(e&&e.name==='AbortError')return}
  const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
 function pickFile(accept,cb){const i=document.createElement('input');i.type='file';i.accept=accept;i.onchange=async()=>{const f=i.files[0];if(f)cb(await f.text())};i.click()}
-function doImport(){pickFile('.csv,text/csv,text/plain',text=>{const r=importInto(P(),text);if(!r){toast('That file does not look like a MoneyTrack CSV');return}dirty();okAnim();toast(`Added ${r.added.toLocaleString()}, skipped ${r.skipped.toLocaleString()} duplicates`);setTab(TAB==='settings'?'today':TAB)})}
-function doRestore(){pickFile('.json,application/json',text=>{try{const j=JSON.parse(text);if(!j||!Array.isArray(j.profiles)||!j.profiles.length)throw 0;if(!confirm('Replace everything on this device with this backup?'))return;const th=S.set.theme;S=fix(j);S.set.theme=th;_bal=_wm=_cm=null;save();applyTheme();shell();TAB='today';render();okAnim();toast('Backup restored')}catch(e){toast('That is not a MoneyTrack backup')}})}
+function handleText(text){const t=text.trim();if(t.startsWith('{')){return restoreText(text)}const r=importInto(P(),text);if(!r){toast('That file does not look like a MoneyTrack CSV');return}dirty();okAnim();toast(`Added ${r.added.toLocaleString()}, skipped ${r.skipped.toLocaleString()} duplicates`);setTab(TAB==='settings'?'today':TAB)}
+function doImport(){pickFile('*/*',handleText)}
+function restoreText(text){try{const j=JSON.parse(text);if(!j||!Array.isArray(j.profiles)||!j.profiles.length)throw 0;if(!confirm('Replace everything on this device with this backup?'))return;const th=S.set.theme;S=fix(j);S.set.theme=th;_bal=_wm=_cm=null;save();applyTheme();shell();TAB='today';render();okAnim();toast('Backup restored')}catch(e){toast('That is not a MoneyTrack backup')}}
+function doRestore(){pickFile('*/*',handleText)}
 
 /* ---------- story ---------- */
 function storyData(){const now=new Date();let a0=new Date(now.getFullYear(),now.getMonth(),1),a1=new Date(now.getFullYear(),now.getMonth()+1,1);let an=analyze(a0.getTime(),a1.getTime());const key=rc()?'earned':'spent';if(!an[key]){a0=new Date(now.getFullYear(),now.getMonth()-1,1);a1=new Date(now.getFullYear(),now.getMonth(),1);an=analyze(a0.getTime(),a1.getTime())}if(!an[key])return null;
@@ -440,32 +464,35 @@ function openStory(){
 
 /* ---------- events ---------- */
 document.addEventListener('click',e=>{
+ if(e.target.closest('[data-close]')){closeSheet();return}
  const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act,v=b.dataset.v,id=b.dataset.id;
  switch(a){
  case'tab':setTab(v);break;
  case'add':openAdd();break;
- case'edit':{const t=P().txns.find(x=>x.id===id);t&&openAdd(t);break}
+ case'edit':{const t=P().txns.find(x=>x.id===id);t&&openDetail(t);break}
+ case'unhide':{const w=WM()[id];if(w){w.hidden=false;dirty();render()}break}
  case'wallet':openWallet(WM()[id]);break;
  case'newwallet':openWallet();break;
  case'story':openStory();break;
  case'profiles':openProfiles();break;
  case'newprofile':openNewProfile();break;
- case'manage':openManage();break;
+ case'manage':openManage(S.profiles.find(x=>x.id===id));break;
  case'switch':switchProfile(id);break;
  case'per':PER=v;render();break;
- case'hf':H.f=v;H.n=60;render();break;
- case'hw':H.w=v;H.n=60;render();break;
- case'more':H.n+=60;$('#hl').innerHTML=histList();countUps($('#hl'));break;
+ case'hf':H.f=v;H.n=120;render();break;
+ case'hw':H.w=v;H.n=120;render();break;
+ case'hm':H.m=v==='all'?'all':+v;H.n=120;render();break;
+ case'more':H.n+=120;$('#hl').innerHTML=histList();countUps($('#hl'));break;
  case'theme':S.set.theme=v;save();applyTheme();render();break;
  case'cats':setTab('cats');break;
  case'import':doImport();break;
  case'export':shareFile('MoneyTrack-'+P().name.replace(/\s+/g,'')+'.csv',exportCSV(),'text/csv');break;
- case'backup':shareFile('MoneyTrack-backup.json',JSON.stringify(S),'application/json');break;
+ case'backup':shareFile('MoneyTrack-backup.json',JSON.stringify(S),'application/json').then(()=>{S.set.lastBackup=Date.now();save();if(TAB==='today'||TAB==='settings')render()});break;
  case'restore':doRestore();break;
  case'wipe':if(confirm(`Erase everything in ${P().name}? Back up first if you want a copy.`)&&confirm('Really erase it?')){const p=P();p.wallets=[];p.txns=[];dirty();setTab('today');toast('Erased')}break;
  case'newcat':{const inc=v==='i';sheet(`<h2>New category</h2><input class="field" id="cn" placeholder="e.g. Pets" maxlength="24"><div class="err" id="ce"></div><div class="sticky"><button class="btn acc" id="cs">Add</button></div>`,sh=>{$('#cs',sh).onclick=()=>{const n=$('#cn',sh).value.trim();if(!cleanOK(n)){$('#ce',sh).textContent='Use 2 to 24 letters or numbers.';return}if(P().cats.some(c=>c.name.toLowerCase()===n.toLowerCase())){$('#ce',sh).textContent='That category exists.';return}const base=n.replace(/[^A-Za-z0-9]/g,'').toUpperCase();let code=base.slice(0,2),k=2;while(P().cats.concat(SYS_CATS).some(c=>c.code===code))code=base.slice(0,1)+(k++);P().cats.push({code,name:n,inc});COLORS[code]=COLORS[code]||PAL[P().cats.length%PAL.length];dirty();closeSheet();render()}});break}
  }});
-document.addEventListener('input',e=>{if(e.target.id==='q'){H.q=e.target.value;H.n=60;$('#hl').innerHTML=histList();countUps($('#hl'))}});
+document.addEventListener('input',e=>{if(e.target.id==='q'){H.q=e.target.value;H.n=120;$('#hl').innerHTML=histList();countUps($('#hl'))}});
 document.addEventListener('change',e=>{
  if(e.target.id==='curSel'){P().cur=e.target.value;dirty();toast('Currency set')}
  const c=e.target.dataset&&e.target.dataset.cat;if(c){const n=e.target.value.trim();const ce=$('#cerr');const cc=P().cats.find(x=>x.code===c);if(!cleanOK(n)){ce.textContent='Names use letters and numbers only, 2 to 24 characters.';e.target.value=cc.name;return}if(P().cats.some(x=>x.code!==c&&x.name.toLowerCase()===n.toLowerCase())){ce.textContent='That name is already used.';e.target.value=cc.name;return}cc.name=n;ce.textContent='';dirty();toast('Saved')}
