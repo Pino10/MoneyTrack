@@ -316,9 +316,9 @@ html[data-vibe=berry]{--a1:#c026d3;--a2:#7c3aed;--a3:#f43f5e;--bg:#fbf3fd;--vc:#
 html[data-vibe=berry][data-theme=dark]{--bg:#120612;--vc:#1f0d20;--sheetS:#190a1a}
 html[data-vibe=mono]{--a1:#18181b;--a2:#52525b;--a3:#a1a1aa;--bg:#f4f4f5;--vc:#fff;--sheetS:#fff;--inc:#15803d;--exp:#b91c1c}
 html[data-vibe=mono][data-theme=dark]{--a1:#fafafa;--a2:#a1a1aa;--a3:#71717a;--bg:#09090b;--vc:#18181b;--sheetS:#111113}
-html[data-vibe]:not([data-vibe=aurora]) .g{background:var(--vc);border-color:var(--line);box-shadow:0 1px 2px rgba(0,0,0,.04),0 10px 30px -18px rgba(0,0,0,.25)}
-html[data-vibe]:not([data-vibe=aurora]) .g:before{display:none}
-html[data-vibe]:not([data-vibe=aurora]) .aura i{opacity:calc(var(--orb) * .45)}
+html:not([data-vibe=glass]) .g{background:var(--vc);border-color:var(--line);box-shadow:0 1px 2px rgba(0,0,0,.04),0 10px 30px -18px rgba(0,0,0,.25)}
+html:not([data-vibe=glass]) .g:before{display:none}
+html:not([data-vibe=glass]) .aura i{opacity:calc(var(--orb) * .3)}
 html[data-vibe=mono] .btn.acc,html[data-vibe=mono] .fab{color:var(--bg)}
 html[data-vibe=mono][data-theme=dark] .btn.acc{color:#09090b}
 .svst{align-items:flex-start}.svst .dot{margin-top:7px}
@@ -329,3 +329,33 @@ html[data-vibe=mono][data-theme=dark] .btn.acc{color:#09090b}
 .cd b{font-size:14px;font-weight:600}.cd em{font-style:normal;font-size:9.5px;font-weight:700;color:var(--a1)}
 .cd.has{background:color-mix(in srgb,var(--a1) 14%,var(--chip))}.cd.td{outline:2px solid var(--a2);outline-offset:-2px}
 .cd.sel{background:var(--a1);color:#fff}.cd.sel em{color:#fff}
+
+/* ===== v4 design system ===== */
+html[data-vibe=nova]{--a1:#4f46e5;--a2:#9333ea;--a3:#0ea5e9;--bg:#eff0f7;--vc:#ffffff;--sheetS:#ffffff;--line:rgba(20,25,60,.07)}
+html[data-vibe=nova][data-theme=dark]{--a1:#7c83ff;--a2:#b07cff;--a3:#38bdf8;--bg:#07080c;--vc:#101218;--sheetS:#12141b;--line:rgba(255,255,255,.07);--chip:rgba(255,255,255,.06)}
+html[data-vibe=nova][data-kind=records]{--a1:#0d9488;--a2:#16a34a;--a3:#f59e0b}
+html[data-vibe=nova][data-theme=dark][data-kind=records]{--a1:#2dd4bf;--a2:#4ade80}
+html:not([data-vibe=glass]) .aura i{display:none}
+html:not([data-vibe=glass]) .g{box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 14px 34px -22px rgba(15,20,60,.28)}
+html:not([data-vibe=glass]) .card{border-radius:28px;padding:18px;margin-bottom:12px}
+.lbl .t{font-size:12px;letter-spacing:.07em;text-transform:uppercase;font-weight:700}
+.tabbar.g{box-shadow:0 18px 40px -12px rgba(10,15,50,.35)}
+[data-theme=dark] .tabbar.g{background:rgba(18,20,28,.96)}
+html:not([data-vibe=glass]) .hero{background:linear-gradient(135deg,var(--a1),var(--a2));border-color:transparent;color:#fff;box-shadow:0 24px 44px -24px var(--a1)}
+html:not([data-vibe=glass]) .hero:before{display:block;background:radial-gradient(90% 60% at 85% -10%,rgba(255,255,255,.35),transparent 60%);opacity:1}
+.hero .lbl .t,.hero .big small{color:rgba(255,255,255,.78)}
+.hero .pill{background:rgba(255,255,255,.2);color:#fff}
+.hero .sp .ln{stroke:#fff!important}.hero .sp stop{stop-color:#fff!important}.hero .sp .dot{fill:#fff!important}
+.hero .wv{opacity:.35}
+html[data-vibe=mono][data-theme=dark] .hero{background:linear-gradient(135deg,#27272a,#3f3f46)}
+.dock{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 12px}
+.dock button{border-radius:22px;padding:12px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:11.5px;font-weight:700;min-width:0}
+.dock i{width:40px;height:40px;border-radius:15px;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 15%,transparent);color:var(--c)}
+.dock button:active{transform:scale(.96)}
+.dock{grid-template-columns:repeat(auto-fit,minmax(0,1fr))}
+.bgt{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.bgt b{display:block;font-size:30px;letter-spacing:-1px;line-height:1.15}
+.bgt .pr{width:64px;height:64px;margin:0}
+.bgr{margin-top:14px}.bgr>div:first-child{display:flex;justify-content:space-between;font-size:13px;font-weight:600}.bgr .tr{margin-top:7px}
+@media(min-width:900px){.dock{max-width:none}}
+.bgt .pr b{font-size:12px;letter-spacing:-.3px}
