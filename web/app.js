@@ -15,6 +15,7 @@ const DAILY_CATS=mk([['SV','Savings'],['BP','Big Purchases'],['SC','Shopping and
 const RECORDS_CATS=mk([['WD','Withdrawals'],['PN','Penalties and Charges'],['FS','Future Savings',1],['SF','School Fees',1],['HR','House Rent',1],['ST','Short Term Savings',1],['IV','Investments',1],['OD','Other Deposits',1]]);
 const SYS_CATS=[{code:'TX',name:'Transfer',inc:false,sys:true},{code:'AD',name:'Adjustment',inc:false,sys:true}];
 const IC={
+cal:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/>',
 home:'<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
 wallet:'<path d="M3 7a2 2 0 0 1 2-2h12v4"/><path d="M3 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1H5a2 2 0 0 1-2-2"/><circle cx="16.5" cy="14" r="1.2"/>',
 chart:'<path d="M4 20V11M10 20V4M16 20v-6M22 20H2"/>',
@@ -40,7 +41,7 @@ del:'<path d="M21 5H9l-6 7 6 7h12z"/><path d="M13 9.5l4 5M17 9.5l-4 5"/>'
 const ico=(n,s=22)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[n]||''}</svg>`;
 const WTYPES=[['bank','Bank account'],['card','Card'],['mobileMoney','Mobile money'],['cash','Cash at hand'],['savings','Savings'],['invest','Investment']];
 const DAY=864e5;
-const VER='3.1';
+const VER='3.2';
 const SXB=`<button class="sx" data-close aria-label="Close">${ico('x',18)}</button>`;
 const VW=()=>P().wallets.filter(w=>!w.hidden);
 
@@ -53,10 +54,30 @@ let S=load();
 const P=()=>S.profiles.find(p=>p.id===S.active)||S.profiles[0];
 const rc=()=>P().kind==='records';
 const cur=()=>P().cur;
+
+let CAL=null;
+function calGrid(){const {y,m}=CAL;const first=new Date(y,m,1),dim=new Date(y,m+1,0).getDate(),off=(first.getDay()+6)%7;const cnt={};for(const t of P().txns){const d=new Date(t.t);if(d.getFullYear()===y&&d.getMonth()===m){const k=d.getDate();cnt[k]=(cnt[k]||0)+1}}const td=sd(Date.now());let h='';for(let i=0;i<off;i++)h+='<i></i>';for(let d=1;d<=dim;d++){const ts=new Date(y,m,d).getTime();h+=`<button class="cd ${cnt[d]?'has':''} ${ts===td?'td':''} ${H.d===ts?'sel':''}" data-cd="${ts}"><b>${d}</b>${cnt[d]?`<em>${cnt[d]}</em>`:''}</button>`}return`<div class="cm"><button class="ib" data-cn="-1">${ico('back',18)}</button><b>${MONTHS[m]} ${y}</b><button class="ib" data-cn="1" style="transform:scaleX(-1)">${ico('back',18)}</button></div><div class="cw">${DOW.map(x=>`<span>${x[0]}</span>`).join('')}</div><div class="cgd">${h}</div>`}
+function openCal(){const n=new Date();const b=H.d?new Date(H.d):n;CAL={y:b.getFullYear(),m:b.getMonth()};
+ sheet(`<h2>Pick a date</h2><p class="sm" style="margin:-8px 0 12px">Days with entries show a count. Tap one to see exactly what happened.</p><div id="calb">${calGrid()}</div><div style="display:flex;gap:10px;margin-top:14px"><button class="btn soft" id="cto">Today</button><button class="btn soft" id="ccl">Show everything</button></div>${PAD}`,sh=>{
+  sh.addEventListener('click',e=>{const n=e.target.closest('[data-cn]'),d=e.target.closest('[data-cd]');if(n){CAL.m+=+n.dataset.cn;if(CAL.m<0){CAL.m=11;CAL.y--}if(CAL.m>11){CAL.m=0;CAL.y++}$('#calb',sh).innerHTML=calGrid()}else if(d){H.d=+d.dataset.cd;H.n=120;closeSheet();render()}});
+  $('#cto',sh).onclick=()=>{H.d=sd(Date.now());H.n=120;closeSheet();render()};
+  $('#ccl',sh).onclick=()=>{H.d=null;H.m='all';H.n=120;closeSheet();render()}})}
+var AFH=null,AFT=0,AFS='',AFN='';
+function idb(){return new Promise((res,rej)=>{const r=indexedDB.open('mt',1);r.onupgradeneeded=()=>r.result.createObjectStore('k');r.onsuccess=()=>res(r.result);r.onerror=rej})}
+async function idbGet(k){try{const d=await idb();return await new Promise(r=>{const q=d.transaction('k').objectStore('k').get(k);q.onsuccess=()=>r(q.result);q.onerror=()=>r()})}catch(e){}}
+async function idbSet(k,v){try{const d=await idb();return await new Promise(r=>{const t=d.transaction('k','readwrite');t.objectStore('k').put(v,k);t.oncomplete=r;t.onerror=r})}catch(e){}}
+async function afInit(){if(!window.showSaveFilePicker)return;try{AFH=await idbGet('fh')||null;if(AFH){AFN=AFH.name;AFS=(await AFH.queryPermission({mode:'readwrite'}))==='granted'?'on':'ask'}}catch(e){AFH=null}if(TAB==='settings')render()}
+async function afWrite(){if(!AFH)return;try{if((await AFH.queryPermission({mode:'readwrite'}))!=='granted'){AFS='ask';return}const w=await AFH.createWritable();await w.write(JSON.stringify(S));await w.close();AFS='on';S.set.lastAuto=Date.now()}catch(e){AFS='ask'}}
+async function afPick(){try{AFH=await showSaveFilePicker({suggestedName:'MoneyTrack-autosave.json',types:[{description:'MoneyTrack backup',accept:{'application/json':['.json']}}]});AFN=AFH.name;await idbSet('fh',AFH);await afWrite();render();toast('Auto-save is on')}catch(e){}}
+async function afAllow(){try{if((await AFH.requestPermission({mode:'readwrite'}))==='granted'){await afWrite();render();toast('Auto-save is on')}}catch(e){}}
+function autoCard(){if(!window.showSaveFilePicker)return`<p class="sm" style="line-height:1.55">Automatic saving to a folder is not allowed by iPhone or Android browsers. On a laptop (Chrome or Edge) this page can keep one backup file up to date by itself.<br><br>On your phone: tap Back up now, then Save to Files, pick iCloud Drive and keep replacing the same file. The app reminds you after every 15 new entries.</p>`;
+ if(AFS==='on')return`<div class="svst"><i class="dot"></i><div class="m"><b>Saving to ${esc(AFN)}</b><span class="sm" style="display:block">Updated within seconds of every change${S.set.lastAuto?'. Last '+new Date(S.set.lastAuto).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):''}.</span></div></div><button class="btn soft" style="margin-top:12px" data-act="afstop">Stop auto-save</button>`;
+ if(AFS==='ask')return`<p class="sm" style="line-height:1.55">Auto-save is set to ${esc(AFN)}, but the browser needs your OK again after reopening.</p><button class="btn acc" style="margin-top:12px" data-act="afallow">Allow and resume</button><button class="btn soft" style="margin-top:8px" data-act="afstop">Stop auto-save</button>`;
+ return`<p class="sm" style="line-height:1.55">Pick a file once, ideally in iCloud Drive, Google Drive or Dropbox. After that it is rewritten automatically every time you add or change something.</p><button class="btn acc" style="margin-top:12px" data-act="afpick">Choose where to save</button>`}
 let LASTSAVE=0;
 function saveStatus(){const n=S.profiles.reduce((a,p)=>a+p.txns.length,0);const lb=S.set.lastBackup;const old=!lb||Date.now()-lb>14*DAY;return`<div class="svst ${old?'warn':''}"><i class="dot"></i><div class="m"><b>Saved on this device</b><span class="sm" style="display:block">${n.toLocaleString()} entries stored. Every entry is saved the moment you tap Save${LASTSAVE?'. Last save '+new Date(LASTSAVE).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):''}.</span><span class="sm" style="display:block;margin-top:4px">${lb?'Last backup file: '+new Date(lb).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'No backup file yet'}${old?'. Back up now to be extra safe.':'.'}</span></div></div><button class="btn soft" style="margin-top:12px" data-act="backupnow">Back up now</button>`}
 function doBackupNow(){const b=document.querySelector('[data-act=backup]');b?b.click():toast('Open Settings')}
-function save(){try{const j=JSON.stringify(S);localStorage.setItem(KEY,j);if(localStorage.getItem(KEY)!==j)throw 0;LASTSAVE=Date.now();return true}catch(e){toast('Storage is full. Export a backup.');return false}}
+function save(){try{const j=JSON.stringify(S);localStorage.setItem(KEY,j);if(localStorage.getItem(KEY)!==j)throw 0;LASTSAVE=Date.now();clearTimeout(AFT);if(AFH)AFT=setTimeout(afWrite,1200);return true}catch(e){toast('Storage is full. Export a backup.');return false}}
 addEventListener('pagehide',save);document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
 let _bal=null,_wm=null,_cm=null;
 function dirty(){_bal=_wm=_cm=null;save()}
@@ -171,7 +192,10 @@ function txRow(t,mx){const w=WM()[t.w],c=cat(t.k==='t'?'TX':t.c);let title,sub,a
 
 function empty(){return`${ttl('Welcome','Let’s set up '+esc(P().name))}${card('',`<div class="empty"><h2>${rc()?'Track your savings plans':'Track your daily money'}</h2><p>${rc()?'Add a plan for each policy or savings account, then record every deposit.':'Create a wallet, then log what comes in and goes out.'}<br>Everything stays on this device.</p><button class="btn acc" data-act="newwallet">${ico('wallet',20)} Create ${rc()?'a plan':'a wallet'}</button><button class="btn soft" data-act="import">Import CSV</button><button class="btn soft" data-act="restore">Restore a backup</button></div>`,{i:1})}`}
 
-function nudge(){const lb=S.set.lastBackup;const n=P().txns.length;if(n<20||(lb&&Date.now()-lb<14*DAY))return'';return`<button class="g card rise" style="--i:1;display:flex;align-items:center;gap:14px;width:100%;padding:16px" data-act="backup"><div class="wic" style="--c:var(--a2)">${ico('savings',18)}</div><div style="flex:1;min-width:0"><b style="display:block;font-size:14.5px">Back up your data</b><span class="sm">${lb?'Last backup was a while ago.':'You have not backed up yet.'} Tap to save a file.</span></div></button>`}
+const totN=()=>S.profiles.reduce((a,p)=>a+p.txns.length,0);
+function logNudge(){if(rc()||P().txns.length<6||new Date().getHours()<17||P().txns.some(t=>sd(t.t)===sd(Date.now())))return'';return`<button class="g card rise" style="--i:1;display:flex;align-items:center;gap:14px;width:100%;padding:16px" data-act="add"><div class="wic" style="--c:var(--a3)">${ico('plus',20)}</div><div style="flex:1;min-width:0;text-align:left"><b style="display:block;font-size:14.5px">Nothing logged today</b><span class="sm">Tap to add what you spent.</span></div></button>`}
+function nudge(){return logNudge()+nudgeB()}
+function nudgeB(){const lb=S.set.lastBackup;const n=P().txns.length;if(n<20||AFS==='on'||(lb&&Date.now()-lb<14*DAY&&totN()-(S.set.bkN||0)<15))return'';return`<button class="g card rise" style="--i:1;display:flex;align-items:center;gap:14px;width:100%;padding:16px" data-act="backup"><div class="wic" style="--c:var(--a2)">${ico('savings',18)}</div><div style="flex:1;min-width:0"><b style="display:block;font-size:14.5px">Back up your data</b><span class="sm">${lb?'Last backup was a while ago.':'You have not backed up yet.'} Tap to save a file.</span></div></button>`}
 function heroCard(label,total,ser,lv,pills){const c=cur();return`<section class="g card hero rise" style="--i:1">${waves(lv)}<div class="lbl"><span class="t">${label}</span></div><div class="big fit"><small>${esc(SYM[c]||c)}</small><span data-cu="${total}" data-mode="num">${nf(total)}</span></div><div class="row2">${pills}</div>${spark(ser,{h:96})}</section>`}
 function stripHtml(ser12){const b=BAL();const all=VW().slice().sort((x,y)=>b[y.id]-b[x.id]);const ws=all.slice(0,4);
  return`<div class="wgrid rise" style="--i:2">${ws.map(w=>{const c=WCOL(w);const g=rc()&&w.goal>0;const s=ser12?balSeries([w.id],12,'m'):balSeries([w.id],30,'d');
@@ -317,12 +341,14 @@ function vHistory(){
  `<div class="search rise" style="--i:1">${ico('search',18)}<input class="field" id="q" placeholder="Search memo, category or amount" value="${esc(H.q)}"></div>
  <div class="chips rise" style="margin-bottom:8px;--i:2"><button class="chip ${H.m==='all'?'on':''}" data-act="hm" data-v="all">All time</button>${mk.map(k=>`<button class="chip ${H.m===k?'on':''}" data-act="hm" data-v="${k}">${MONTHS[k%12].slice(0,3)} ${String(Math.floor(k/12)).slice(2)}</button>`).join('')}</div>
  <div class="chips rise" style="margin-bottom:12px;--i:3">${[['all','All'],['e',L.exp+'s'],['i',rc()?'Deposits':'Income'],['t','Transfers']].map(([k,v])=>`<button class="chip ${H.f===k?'on':''}" data-act="hf" data-v="${k}">${v}</button>`).join('')}${P().wallets.length>1?P().wallets.map(w=>`<button class="chip ${H.w===w.id?'on':''}" data-act="hw" data-v="${H.w===w.id?'all':w.id}">${esc(w.name)}</button>`).join(''):''}</div>
+ <div class="chips rise" style="margin-bottom:12px;--i:3"><button class="chip ${H.d?'on':''}" data-act="cal" style="display:inline-flex;align-items:center;gap:6px">${ico('cal',15)} ${H.d?new Date(H.d).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'Pick a date'}</button>${H.d?'<button class="chip" data-act="calclear">Clear date</button>':''}<button class="chip" data-act="hsort">Sort: ${({new:'Newest',old:'Oldest',big:'Largest',small:'Smallest'})[H.s||'new']}</button></div>
  <div id="hl">${histList()}</div>`}
-function histFilter(){const q=H.q.trim().toLowerCase();return P().txns.filter(t=>(H.m==='all'||mkey(t.t)===H.m)&&(H.f==='all'||t.k===H.f)&&(H.w==='all'||t.w===H.w||t.to===H.w)&&(!q||(t.m||'').toLowerCase().includes(q)||cat(t.c).name.toLowerCase().includes(q)||String(t.a).includes(q))).sort((a,b)=>b.t-a.t)}
+function histFilter(){const q=H.q.trim().toLowerCase();return P().txns.filter(t=>(H.d?sd(t.t)===H.d:(H.m==='all'||mkey(t.t)===H.m))&&(H.f==='all'||t.k===H.f)&&(H.w==='all'||t.w===H.w||t.to===H.w)&&(!q||(t.m||'').toLowerCase().includes(q)||cat(t.c).name.toLowerCase().includes(q)||String(t.a).includes(q))).sort(H.s==='old'?(a,b)=>a.t-b.t:H.s==='big'?(a,b)=>b.a-a.a:H.s==='small'?(a,b)=>a.a-b.a:(a,b)=>b.t-a.t)}
 function histList(){
  const all=histFilter();const total=all.length;const L=all.slice(0,H.n);
  if(!total)return'<p class="sm" style="text-align:center;padding:40px 0">Nothing found.</p>';
  const rmx=Math.max(1,...L.map(t=>t.a));const months=[];
+ if(H.s==='big'||H.s==='small'||H.s==='old'&&false)return`<div class="g card" style="padding:6px 16px;border-radius:26px">${L.map(t=>txRow(t,rmx)).join('')}</div>`+(total>L.length?`<button class="btn soft" style="margin-top:18px" data-act="more">Show more (${total-L.length} left)</button>`:'');
  for(const t of L){const mk=mkey(t.t);let m=months[months.length-1];if(!m||m.k!==mk){m={k:mk,days:[],items:[]};months.push(m)}m.items.push(t);const dk=sd(t.t);let d=m.days[m.days.length-1];if(!d||d.k!==dk){d={k:dk,items:[]};m.days.push(d)}d.items.push(t)}
  const td=sd(Date.now());
  let out=months.map(m=>{const full=all.filter(t=>mkey(t.t)===m.k);const inn=full.filter(t=>t.k==='i'&&!SYSC(t.c)).reduce((s,t)=>s+t.a,0),outv=full.filter(t=>t.k==='e'&&!SYSC(t.c)).reduce((s,t)=>s+t.a,0),mx=Math.max(inn,outv,1);
@@ -337,6 +363,7 @@ function vSettings(){
  return ttl('Make it yours','Settings')+
  card('Profiles',S.profiles.map(q=>`<button class="row" data-act="switch" data-id="${q.id}"><div class="av" style="width:40px;height:40px">${esc(q.name.slice(0,1).toUpperCase())}</div><div class="m"><b>${esc(q.name)}</b><span>${q.kind==='records'?'Savings records':'Daily spending'} · ${q.wallets.length} ${q.kind==='records'?'plans':'wallets'} · ${q.txns.length.toLocaleString()} entries</span></div>${q.id===S.active?`<span class="pill inc">Active</span>`:''}</button>`).join('')+`<button class="btn soft" style="margin-top:12px" data-act="newprofile">${ico('plus',18)} New profile</button><button class="btn soft" data-act="manage" data-id="${p.id}">${ico('edit',18)} Rename or delete “${esc(p.name)}”</button>`,{i:1})+
  card('Saved status',saveStatus(),{i:1})+
+ card('Auto-save to a file',autoCard(),{i:2})+
  card('Vibe',`<div class="vibes">${[['aurora','Aurora glass','linear-gradient(135deg,#3b82f6,#8b5cf6)'],['sunset','Sunset','linear-gradient(135deg,#f97316,#ec4899)'],['ocean','Ocean','linear-gradient(135deg,#0284c7,#0d9488)'],['berry','Berry','linear-gradient(135deg,#c026d3,#7c3aed)'],['mono','Mono','linear-gradient(135deg,#18181b,#a1a1aa)']].map(([k,n,g])=>`<button class="vb ${(st.vibe||'aurora')===k?'on':''}" data-act="vibe" data-v="${k}"><i style="background:${g}"></i>${n}</button>`).join('')}</div>`,{i:2})+
  card('Appearance',`<div class="seg">${[['auto','Auto'],['light','White'],['dark','Dark']].map(([k,v])=>`<button class="${st.theme===k?'on':''}" data-act="theme" data-v="${k}">${v}</button>`).join('')}</div>`,{i:2})+
  card('Currency for '+esc(p.name),`<select class="field" id="curSel">${CURS.map(c=>`<option ${c===p.cur?'selected':''}>${c}</option>`).join('')}</select><p class="sm" style="margin-top:8px">Totals and insights count ${rc()?'plans':'wallets'} in this currency.</p>`,{i:3})+
@@ -534,6 +561,12 @@ document.addEventListener('click',e=>{
  case'incl':S.set.incl=!S.set.incl;dirty();render();break;
  case'catd':openCat(id);break;
  case'addflow':openAdd(null,{k:FLOW});break;
+ case'cal':openCal();break;
+ case'calclear':H.d=null;H.n=120;render();break;
+ case'hsort':H.s=({new:'old',old:'big',big:'small',small:'new'})[H.s||'new'];H.n=120;render();break;
+ case'afpick':afPick();break;
+ case'afallow':afAllow();break;
+ case'afstop':AFH=null;AFS='';idbSet('fh',null);render();break;
  case'hf':H.f=v;H.n=120;render();break;
  case'hw':H.w=v;H.n=120;render();break;
  case'hm':H.m=v==='all'?'all':+v;H.n=120;render();break;
@@ -544,7 +577,7 @@ document.addEventListener('click',e=>{
  case'cats':setTab('cats');break;
  case'import':doImport();break;
  case'export':shareFile('MoneyTrack-'+P().name.replace(/\s+/g,'')+'.csv',exportCSV(),'text/csv');break;
- case'backup':shareFile('MoneyTrack-backup.json',JSON.stringify(S),'application/json').then(()=>{S.set.lastBackup=Date.now();save();if(TAB==='today'||TAB==='settings')render()});break;
+ case'backup':shareFile('MoneyTrack-backup.json',JSON.stringify(S),'application/json').then(()=>{S.set.lastBackup=Date.now();S.set.bkN=totN();save();if(TAB==='today'||TAB==='settings')render()});break;
  case'restore':doRestore();break;
  case'wipe':if(confirm(`Erase everything in ${P().name}? Back up first if you want a copy.`)&&confirm('Really erase it?')){const p=P();p.wallets=[];p.txns=[];dirty();setTab('today');toast('Erased')}break;
  case'newcat':{const inc=v==='i';sheet(`<h2>New category</h2><input class="field" id="cn" placeholder="e.g. Pets" maxlength="24"><div class="err" id="ce"></div><div class="sticky"><button class="btn acc" id="cs">Add</button></div>`,sh=>{$('#cs',sh).onclick=()=>{const n=$('#cn',sh).value.trim();if(!cleanOK(n)){$('#ce',sh).textContent='Use 2 to 24 letters or numbers.';return}if(P().cats.some(c=>c.name.toLowerCase()===n.toLowerCase())){$('#ce',sh).textContent='That category exists.';return}const base=n.replace(/[^A-Za-z0-9]/g,'').toUpperCase();let code=base.slice(0,2),k=2;while(P().cats.concat(SYS_CATS).some(c=>c.code===code))code=base.slice(0,1)+(k++);P().cats.push({code,name:n,inc});COLORS[code]=COLORS[code]||PAL[P().cats.length%PAL.length];dirty();closeSheet();render()}});break}
@@ -567,5 +600,6 @@ PER=P().kind==='records'?'y':'m';applyTheme();shell();render();
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+afInit();
 window.__mt={S:()=>S,P,importInto,render,setTab,save,dirty,switchProfile,exportCSV,load:()=>load(),shell};
 })();

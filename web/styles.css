@@ -322,3 +322,10 @@ html[data-vibe]:not([data-vibe=aurora]) .aura i{opacity:calc(var(--orb) * .45)}
 html[data-vibe=mono] .btn.acc,html[data-vibe=mono] .fab{color:var(--bg)}
 html[data-vibe=mono][data-theme=dark] .btn.acc{color:#09090b}
 .svst{align-items:flex-start}.svst .dot{margin-top:7px}
+
+.cm{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.cm b{font-size:17px}
+.cw,.cgd{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.cw span{text-align:center;font-size:11px;font-weight:700;color:var(--mut);padding:4px 0}
+.cd{aspect-ratio:1;border-radius:16px;background:var(--chip);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;position:relative;min-width:0}
+.cd b{font-size:14px;font-weight:600}.cd em{font-style:normal;font-size:9.5px;font-weight:700;color:var(--a1)}
+.cd.has{background:color-mix(in srgb,var(--a1) 14%,var(--chip))}.cd.td{outline:2px solid var(--a2);outline-offset:-2px}
+.cd.sel{background:var(--a1);color:#fff}.cd.sel em{color:#fff}
