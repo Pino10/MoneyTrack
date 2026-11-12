@@ -42,7 +42,7 @@ del:'<path d="M21 5H9l-6 7 6 7h12z"/><path d="M13 9.5l4 5M17 9.5l-4 5"/>'
 const ico=(n,s=22)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[n]||''}</svg>`;
 const WTYPES=[['bank','Bank account'],['card','Card'],['mobileMoney','Mobile money'],['cash','Cash at hand'],['savings','Savings'],['invest','Investment']];
 const DAY=864e5;
-const VER='4.0';
+const VER='5.0';
 const SXB=`<button class="sx" data-close aria-label="Close">${ico('x',18)}</button>`;
 const VW=()=>P().wallets.filter(w=>!w.hidden);
 
@@ -94,6 +94,17 @@ function openRec(){const p=P();let k=rc()?'i':'e';const opts=()=>p.cats.filter(c
   $('#rs',sh).onclick=()=>{const a=parseFloat($('#ra',sh).value);if(!(a>0)){toast('Enter an amount');return}(p.rec=p.rec||[]).push({id:uid(),k,c:$('#rc',sh).value,a:Math.round(a*100)/100,w:$('#rw',sh).value,m:$('#rm',sh).value.trim(),day:+$('#rd',sh).value,from:sd(Date.now())});runRec();dirty();closeSheet();render();toast('Recurring saved')}})}
 function comingCard(){const R=P().rec||[];if(!R.length)return'';const now=new Date();const nx=R.map(r=>{let y=now.getFullYear(),m=now.getMonth();const mk=(yy,mm)=>new Date(yy,mm,Math.min(r.day,new Date(yy,mm+1,0).getDate()),9);let d=mk(y,m);if(d<now)d=mk(y,m+1);return{r,d}}).sort((a,b)=>a.d-b.d).slice(0,3);
  return card('Coming up',nx.map(({r,d})=>`<div class="row"><div class="tile" style="--c:${COLORS[r.c]||'#8e8e93'};width:40px;height:40px;border-radius:14px;font-size:12px">${esc(r.c)}</div><div class="m"><b>${esc(r.m||cat(r.c).name)}</b><span>${d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</span></div><div class="r ${r.k==='i'?'inc':''}">${money(r.k==='e'?-r.a:r.a,undefined,true)}</div></div>`).join(''),{i:4})}
+
+async function hashPin(p){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('mt1:'+p));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+function askPin(title,cb,canClose){const o=document.createElement('div');o.id='lock';o.className='lock';let v='';
+ o.innerHTML=`${canClose?`<button class="sx" id="lc" style="position:absolute;top:calc(var(--safe-t) + 14px);right:16px;float:none">${ico('x',18)}</button>`:''}<div class="lk"><div class="lgo"></div><h2>${title}</h2><div class="pdots"><i></i><i></i><i></i><i></i></div><div class="kp">${[1,2,3,4,5,6,7,8,9,'',0,'del'].map(k=>k===''?'<span></span>':`<button data-k="${k}">${k==='del'?ico('del',24):k}</button>`).join('')}</div></div>`;
+ document.body.appendChild(o);const dots=[...o.querySelectorAll('.pdots i')];const paint=()=>dots.forEach((d,i)=>d.classList.toggle('on',i<v.length));
+ o.onclick=async e=>{if(e.target.closest('#lc')){o.remove();return}const b=e.target.closest('[data-k]');if(!b)return;buzz();const k=b.dataset.k;if(k==='del')v=v.slice(0,-1);else if(v.length<4)v+=k;paint();if(v.length===4){const r=await cb(v,o);if(r==='bad'){o.classList.add('shake');buzz();setTimeout(()=>{o.classList.remove('shake');v='';paint()},420)}else o.remove()}};return o}
+function lockScreen(){if(!S.set.pin||document.getElementById('lock'))return;const o=askPin('Enter your PIN',async v=>(await hashPin(v))===S.set.pin?'ok':'bad',false);const f=document.createElement('button');f.className='lf';f.textContent='Forgot PIN?';f.onclick=()=>{if(confirm('Turn off the lock? Your data stays safe. Only do this on your own phone.')){S.set.pin=null;save();o.remove();render()}};o.querySelector('.lk').appendChild(f)}
+async function pinSet(){const go=()=>askPin('Choose a PIN',v1=>{askPin('Repeat the PIN',async v2=>{if(v2!==v1)return'bad';S.set.pin=await hashPin(v1);save();render();toast('App lock is on')},true)},true);
+ if(S.set.pin)askPin('Current PIN',async v=>{if((await hashPin(v))!==S.set.pin)return'bad';go();return'ok'},true);else go()}
+function pinOff(){askPin('Enter PIN to turn off',async v=>{if((await hashPin(v))!==S.set.pin)return'bad';S.set.pin=null;save();render();toast('App lock is off')},true)}
+function secCard(){return S.set.pin?`<div class="svst"><i class="dot"></i><div class="m"><b>App lock is on</b><span class="sm" style="display:block">Asks for your PIN when you open the app or come back after a minute.</span></div></div><button class="btn soft" style="margin-top:12px" data-act="pinset">Change PIN</button><button class="btn red" data-act="pinoff">Turn off</button>`:`<p class="sm" style="line-height:1.5">Ask for a 4 digit PIN when the app opens. It keeps casual snoopers out. Your data is not encrypted.</p><button class="btn soft" style="margin-top:12px" data-act="pinset">Set a PIN</button>`}
 let LASTSAVE=0;
 function saveStatus(){const n=S.profiles.reduce((a,p)=>a+p.txns.length,0);const lb=S.set.lastBackup;const old=!lb||Date.now()-lb>14*DAY;return`<div class="svst ${old?'warn':''}"><i class="dot"></i><div class="m"><b>Saved on this device</b><span class="sm" style="display:block">${n.toLocaleString()} entries stored. Every entry is saved the moment you tap Save${LASTSAVE?'. Last save '+new Date(LASTSAVE).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):''}.</span><span class="sm" style="display:block;margin-top:4px">${lb?'Last backup file: '+new Date(lb).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'No backup file yet'}${old?'. Back up now to be extra safe.':'.'}</span></div></div><button class="btn soft" style="margin-top:12px" data-act="backupnow">Back up now</button>`}
 function doBackupNow(){const b=document.querySelector('[data-act=backup]');b?b.click():toast('Open Settings')}
@@ -267,14 +278,15 @@ function todayRec(g,date){
  return ttl(date,g)+nudge()+`<div class="cols"><div>${left}</div><div>${right}</div></div>`}
 
 function vWallets(){
- if(!P().wallets.length)return ttl(LB().wal,'Your '+LB().wal.toLowerCase())+card('',`<div class="empty"><h2>No ${LB().wal.toLowerCase()} yet</h2><p>Add your first ${LB().w1.toLowerCase()}.</p><button class="btn acc" data-act="newwallet">Create ${LB().w1.toLowerCase()}</button></div>`,{i:1});
- const b=BAL(),ws=VW();const c=cur();const tot=ws.filter(w=>w.cur===c).reduce((s,w)=>s+Math.max(0,b[w.id]),0)||1;const a=range('m');
- const list=ws.map((w,i)=>{let inn=0,out=0;for(const t of P().txns){if(t.t<a.from)continue;if(t.k==='i'&&t.w===w.id&&t.c!=='AD')inn+=t.a;else if(t.k==='e'&&t.w===w.id&&t.c!=='AD')out+=t.a;else if(t.k==='t'){if(t.w===w.id)out+=t.a;if(t.to===w.id)inn+=t.a}}const mx=Math.max(inn,out,1);const col=WCOL(w);
-  const s=rc()?balSeries([w.id],12,'m'):balSeries([w.id],45,'d');const share=Math.max(0,b[w.id])/tot;
-  return`<button class="g card rise" style="--i:${i+1};display:block;width:100%;--c:${col}" data-act="wallet" data-id="${w.id}"><div style="display:flex;align-items:center;gap:12px;margin-bottom:16px"><div class="wic">${ico(w.type,20)}</div><div style="min-width:0;flex:1"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:16px">${esc(w.name)}</b><span class="sm">${(WTYPES.find(t=>t[0]===w.type)||[])[1]} · ${w.cur}</span></div>${pr(w.goal>0?b[w.id]/w.goal:share,col,Math.round((w.goal>0?Math.min(1,b[w.id]/w.goal):share)*100)+'%')}</div>
-  <div style="font-size:clamp(26px,8vw,34px);font-weight:800;letter-spacing:-1px;white-space:nowrap;overflow:hidden" class="fit" data-cu="${b[w.id]}" data-cur="${w.cur}">${money(b[w.id],w.cur)}</div><p class="sm" style="margin:2px 0 6px">${w.goal>0?`Goal ${money(w.goal,w.cur)}`:`${Math.round(share*100)}% of all ${LB().wal.toLowerCase()}`}</p>${spark(s,{h:64,c:col})}
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px"><div><span class="sm">In this month</span><b class="inc" style="display:block;font-size:14px">${compact(inn,w.cur)}</b>${trk(inn/mx,'var(--inc)')}</div><div><span class="sm">Out this month</span><b class="exp" style="display:block;font-size:14px">${compact(out,w.cur)}</b>${trk(out/mx,'var(--exp)')}</div></div></button>`}).join('');
- return ttl(LB().wal,'Your '+LB().wal.toLowerCase())+`<div class="cols"><div>${list}</div></div><button class="btn soft rise" style="--i:9" data-act="newwallet">${ico('plus',18)} Add ${LB().w1.toLowerCase()}</button>${hiddenCard()}`}
+ const L=LB();
+ if(!P().wallets.length)return ttl(L.wal,'Your '+L.wal.toLowerCase())+card('',`<div class="empty"><h2>No ${L.wal.toLowerCase()} yet</h2><p>Add your first ${L.w1.toLowerCase()}.</p><button class="btn acc" data-act="newwallet">Create ${L.w1.toLowerCase()}</button></div>`,{i:1});
+ const b=BAL(),ws=VW();const c=cur();const same=ws.filter(w=>w.cur===c);const tot=same.reduce((x,w)=>x+b[w.id],0);const pos=same.reduce((x,w)=>x+Math.max(0,b[w.id]),0)||1;const a=range('m');
+ const ser=balSeries(same.map(w=>w.id),30,'d');const dl=ser[ser.length-1]-ser[0];
+ const top=`<section class="g card nw rise" style="--i:1"><div class="lbl"><span class="t">${L.tot}</span></div><div class="big fit" data-cu="${tot}" data-cur="${c}">${money(tot,c)}</div><div class="row2"><span class="pill ${dl>=0?'inc':'exp'}">${dl>=0?'▲':'▼'} ${compact(Math.abs(dl))} in 30 days</span><span class="pill">${ws.length} ${(ws.length===1?L.w1:L.wal).toLowerCase()}</span></div><div class="alloc">${same.map(w=>`<i style="flex:${Math.max(.02,Math.max(0,b[w.id])/pos)};background:${WCOL(w)}"></i>`).join('')}</div><div class="legend">${same.map(w=>`<span><i style="background:${WCOL(w)}"></i>${esc(w.name)} ${Math.round(Math.max(0,b[w.id])/pos*100)}%</span>`).join('')}</div></section>`;
+ const cards=ws.slice().sort((x,y)=>b[y.id]-b[x.id]).map((w,i)=>{let inn=0,out=0;for(const t of P().txns){if(t.t<a.from)continue;if(t.k==='i'&&t.w===w.id&&t.c!=='AD')inn+=t.a;else if(t.k==='e'&&t.w===w.id&&t.c!=='AD')out+=t.a;else if(t.k==='t'){if(t.w===w.id)out+=t.a;if(t.to===w.id)inn+=t.a}}
+  const col=WCOL(w);const s2=rc()?balSeries([w.id],12,'m'):balSeries([w.id],45,'d');const g=w.goal>0?Math.max(0,Math.min(1,b[w.id]/w.goal)):null;
+  return`<button class="wcard rise" style="--i:${i+2};--c:${col}" data-act="wallet" data-id="${w.id}"><div class="wtop"><div class="wic">${ico(w.type,20)}</div><div class="wn"><b>${esc(w.name)}</b><span>${(WTYPES.find(t=>t[0]===w.type)||[])[1]} · ${w.cur}</span></div></div><div class="wbal fit" data-cu="${b[w.id]}" data-cur="${w.cur}">${money(b[w.id],w.cur)}</div>${spark(s2,{h:54,c:'#fff',dot:false})}${g!=null?`<div class="wgoal"><span>${Math.round(g*100)}% of ${money(w.goal,w.cur)}</span><div class="tr"><i style="--w:${(g*100).toFixed(1)}%;--c:#fff"></i></div></div>`:''}<div class="wio"><span>In ${compact(inn,w.cur)}</span><span>Out ${compact(out,w.cur)}</span><em>this month</em></div></button>`}).join('');
+ return ttl(L.wal,'Your '+L.wal.toLowerCase())+top+`<div class="wlist">${cards}</div><button class="btn soft rise" style="--i:9" data-act="newwallet">${ico('plus',18)} Add ${L.w1.toLowerCase()}</button>${hiddenCard()}`}
 function hiddenCard(){const hs=P().wallets.filter(w=>w.hidden);if(!hs.length)return'';return`<section class="g card rise" style="--i:10;margin-top:14px"><div class="lbl"><span class="t">Hidden (${hs.length})</span></div>${hs.map(w=>`<div class="row"><div class="wic">${ico(w.type,18)}</div><div class="m"><b>${esc(w.name)}</b><span>Not in totals or insights</span></div><button class="pill" data-act="unhide" data-id="${w.id}">Show</button></div>`).join('')}</section>`}
 
 function heatHtml(){const td=sd(Date.now());const an=analyze(td-34*DAY,td+DAY);const mx=Math.max(1,...Object.values(an.days));const first=new Date(td-34*DAY);const off=(first.getDay()+6)%7;
@@ -290,7 +302,7 @@ function flowData(from,to){const m={};let tot=0,n=0;for(const t of P().txns){if(
 function flowMonths(n){const now=new Date(),o=[];for(let i=n-1;i>=0;i--){const a=new Date(now.getFullYear(),now.getMonth()-i,1),b=new Date(now.getFullYear(),now.getMonth()-i+1,1);const by={};let tot=0;for(const t of P().txns){if(t.t>=a.getTime()&&t.t<b.getTime()&&inFlow(t)){by[t.c]=(by[t.c]||0)+t.a;tot+=t.a}}o.push({l:MONTHS[a.getMonth()].slice(0,3),tot,by})}return o}
 function prevRange(p,r){const len=r.to-r.from;if(p==='a')return null;if(p==='m'){const d=new Date(r.from);return{from:new Date(d.getFullYear(),d.getMonth()-1,1).getTime(),to:r.from}}if(p==='y'){const d=new Date(r.from);return{from:new Date(d.getFullYear()-1,0,1).getTime(),to:r.from}}return{from:r.from-len,to:r.from}}
 function vFlow(){
- const r=range(PER),d=flowData(r.from,r.to),c=cur(),exp=FLOW==='e';const pr=prevRange(PER,r);const pd=pr?flowData(pr.from,pr.to):null;
+ const r=range(PER),d=flowData(r.from,r.to),c=cur(),exp=FLOW==='e';const prg=prevRange(PER,r);const pd=prg?flowData(prg.from,prg.to):null;
  const col=exp?'var(--exp)':'var(--inc)';const fm=flowMonths(12),f6=fm.slice(-6);
  const delta=pd&&pd.tot?((d.tot-pd.tot)/pd.tot*100):null;const good=delta==null?null:(exp?delta<=0:delta>=0);
  const pl={w:'the week before',m:'last month',q:'the 90 days before',y:'last year'}[PER];
@@ -301,6 +313,11 @@ function vFlow(){
  if(d.cats[0])hl.push(['var(--a1)',`${esc(cat(d.cats[0].k).name)} is your biggest ${exp?'expense':'income'}: ${Math.round(d.cats[0].v/d.tot*100)}% of the total.`]);
  if(d.n)hl.push(['var(--a2)',`About ${money(d.tot/days)} a day over ${days} days, ${d.n} entries.`]);
  if(exp&&PER==='m'){const now=new Date(),dm=new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),dd=now.getDate();hl.push(['var(--a3)',`At this pace the month ends near ${money(d.tot/dd*dm)}.`])}
+
+ const an=analyze(r.from,r.to);const net=an.earned-an.spent;const rate=an.earned>0?net/an.earned:0;
+ const cfm=(()=>{const now=new Date(),o=[];for(let i=5;i>=0;i--){const a0=new Date(now.getFullYear(),now.getMonth()-i,1),b0=new Date(now.getFullYear(),now.getMonth()-i+1,1);const x=analyze(a0.getTime(),b0.getTime());o.push({l:MONTHS[a0.getMonth()].slice(0,3),e:x.earned,s:x.spent})}return o})();
+ const cash=card('Cash flow',`<div class="bgt"><div><span class="sm">Net for this period</span><b class="${net<0?'exp':'inc'}">${money(net,undefined,true)}</b></div>${pr(Math.abs(rate),net<0?'var(--exp)':'var(--inc)',(Math.abs(rate)>9.99?'999+':Math.round(rate*100))+'%')}</div><p class="sm" style="margin:2px 0 12px">${an.earned>0?(rate>=0?`You kept ${Math.round(rate*100)}% of what came in.`:`You spent ${Math.round(-rate*100)}% more than came in.`):'No income in this period.'}</p>`+barsHtml(cfm.map((m,i)=>({l:m.l,vals:[m.e,m.s],cols:['var(--inc)','var(--exp)'],hi:i===5})),{h:130,w:14})+`<div class="sm lgd"><span><i style="background:var(--inc)"></i>Earned</span><span><i style="background:var(--exp)"></i>Spent</span><span>Last 6 months</span></div>`,{i:5});
+ const mv=(()=>{if(!pd)return'';const pm=Object.fromEntries(pd.cats.map(x=>[x.k,x.v])),cm=Object.fromEntries(d.cats.map(x=>[x.k,x.v]));const ks=[...new Set([...Object.keys(pm),...Object.keys(cm)])].map(k=>({k,df:(cm[k]||0)-(pm[k]||0)})).filter(x=>Math.abs(x.df)>0).sort((a,b)=>Math.abs(b.df)-Math.abs(a.df)).slice(0,4);if(!ks.length)return'';return card('What changed',ks.map(x=>{const bad=exp?x.df>0:x.df<0;return`<div class="row"><div class="tile" style="--c:${colorOf(x.k)};width:40px;height:40px;border-radius:14px;font-size:12px">${esc(x.k)}</div><div class="m"><b>${esc(cat(x.k).name)}</b><span>vs ${pl}</span></div><div class="r ${bad?'exp':'inc'}">${x.df>0?'+':'-'}${compact(Math.abs(x.df))}</div></div>`}).join(''),{i:5})})();
  // hour histogram
  const hrs=Array(6).fill(0);for(const t of P().txns){if(t.t>=r.from&&t.t<r.to&&inFlow(t))hrs[Math.floor(new Date(t.t).getHours()/4)]+=t.a}
  const hl6=['12a','4a','8a','12p','4p','8p'],hm=hrs.indexOf(Math.max(...hrs));
@@ -314,7 +331,7 @@ function vFlow(){
  <section class="g card hero2 rise" style="--i:2;--fc:${col}"><div class="sm">${exp?'Spent':'Earned'}</div><div class="bigt fit" data-cu="${d.tot}" data-mode="compact" data-cur="${c}">${compact(d.tot,c)}</div><div class="dl">${delta==null?`<span class="pill">${d.n} entries</span>`:`<span class="pill ${good?'inc':'exp'}">${delta>=0?'▲':'▼'} ${Math.abs(delta).toFixed(0)}%</span><span class="sm">vs ${pl}</span>`}</div>${spark(fm.map(m=>m.tot),{h:84,c:col})}<div class="sm" style="display:flex;justify-content:space-between"><span>${fm[0].l}</span><span>Last 12 months</span><span>${fm[11].l}</span></div></section>
  <button class="btn acc rise" style="--i:3" data-act="addflow">${ico('plus',18)} Add ${exp?'an expense':'income'}</button>
  <div class="cols"><div>${card('Highlights',hl.length?hl.map(h=>`<div class="hlr" style="--c:${h[0]}"><i></i><span>${h[1]}</span></div>`).join(''):'<p class="sm">Add a few entries to see highlights.</p>',{i:4})}
- ${card(exp?'Expense categories':'Income categories',list,{i:5,r:'<span class="sm">Tap one to see its entries</span>'})}
+ ${cash}${mv}${card(exp?'Expense categories':'Income categories',list,{i:5,r:'<span class="sm">Tap one to see its entries</span>'})}
  ${card('Share',d.cats.length?donutHtml(segs,d.tot||1,`<span class="sm">${exp?'Spent':'Earned'}</span><b class="fit" style="max-width:96px;overflow:hidden">${compact(d.tot)}</b>`)+`<div class="leg" style="margin-top:12px">${segs.map(s=>`<div class="row" style="--c:${s.c}"><i></i><span class="n">${s.other?'Other':esc(nameOf(s.k))}</span><span class="v">${Math.round(s.v/d.tot*100)}%</span></div>`).join('')}</div>`:'<p class="sm">Nothing yet.</p>',{i:6})}</div>
  <div>${card('Last 12 months',barsHtml(fm.map((m,i)=>({l:m.l,vals:[m.tot],cols:[col],hi:i===11}))),{i:6})}
  ${card('By weekday',barsHtml(wd.map((v,i)=>({l:DOW[i],vals:[v],cols:[i===wm&&d.tot?col:'color-mix(in srgb,'+col+' 30%,transparent)'],hi:i===wm&&d.tot})),{h:120,w:26}),{i:7,r:d.tot?`<span class="sm">Peak: ${DOW[wm]}</span>`:''})}
@@ -362,7 +379,13 @@ function vHistory(){
  <div class="chips rise" style="margin-bottom:8px;--i:2"><button class="chip ${H.m==='all'?'on':''}" data-act="hm" data-v="all">All time</button>${mk.map(k=>`<button class="chip ${H.m===k?'on':''}" data-act="hm" data-v="${k}">${MONTHS[k%12].slice(0,3)} ${String(Math.floor(k/12)).slice(2)}</button>`).join('')}</div>
  <div class="chips rise" style="margin-bottom:12px;--i:3">${[['all','All'],['e',L.exp+'s'],['i',rc()?'Deposits':'Income'],['t','Transfers']].map(([k,v])=>`<button class="chip ${H.f===k?'on':''}" data-act="hf" data-v="${k}">${v}</button>`).join('')}${P().wallets.length>1?P().wallets.map(w=>`<button class="chip ${H.w===w.id?'on':''}" data-act="hw" data-v="${H.w===w.id?'all':w.id}">${esc(w.name)}</button>`).join(''):''}</div>
  <div class="chips rise" style="margin-bottom:12px;--i:3"><button class="chip ${H.d?'on':''}" data-act="cal" style="display:inline-flex;align-items:center;gap:6px">${ico('cal',15)} ${H.d?new Date(H.d).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'Pick a date'}</button>${H.d?'<button class="chip" data-act="calclear">Clear date</button>':''}<button class="chip" data-act="hsort">Sort: ${({new:'Newest',old:'Oldest',big:'Largest',small:'Smallest'})[H.s||'new']}</button></div>
+ ${histSummary()}
  <div id="hl">${histList()}</div>`}
+function histSummary(){const all=histFilter();let inn=0,out=0;for(const t of all){if(SYSC(t.c)||t.k==='t')continue;if(t.k==='i')inn+=t.a;else out+=t.a}
+ let glance='';if(typeof H.m==='number'){const y=Math.floor(H.m/12),mo=H.m%12,dim=new Date(y,mo+1,0).getDate(),v=Array(dim).fill(0);for(const t of P().txns){if(t.k==='e'&&!SYSC(t.c)){const d=new Date(t.t);if(d.getFullYear()===y&&d.getMonth()===mo&&(H.w==='all'||t.w===H.w))v[d.getDate()-1]+=t.a}}const mx=Math.max(1,...v);
+  glance=`<div class="dbars">${v.map((x,i)=>{const ts=new Date(y,mo,i+1).getTime();return`<button data-act="hday" data-v="${ts}" class="${H.d===ts?'on':''}" aria-label="Day ${i+1}"><i style="height:${Math.max(4,x/mx*100)}%"></i></button>`}).join('')}</div><div class="dax"><span>1</span><span>Tap a day to see it</span><span>${dim}</span></div>`}
+ return`<section class="g card rise hsum" style="--i:4"><div class="hs3"><div><span>${rc()?'Deposits':'In'}</span><b class="inc">${compact(inn)}</b></div><div><span>${rc()?'Withdrawals':'Out'}</span><b class="exp">${compact(out)}</b></div><div><span>Net</span><b class="${inn-out<0?'exp':'inc'}">${compact(inn-out)}</b></div></div>${glance}<div class="hmeta"><span class="sm">${all.length.toLocaleString()} ${all.length===1?'entry':'entries'} shown</span><button class="pill" data-act="hexport">Export these</button></div></section>`}
+function hExport(){const q=v=>'"'+String(v).replace(/"/g,'""')+'"';const rows=[['Date','Type','Category','Wallet','Amount','Memo']];for(const t of histFilter()){const w=WM()[t.w];rows.push([new Date(t.t).toISOString().slice(0,16).replace('T',' '),t.k==='i'?'Income':t.k==='e'?'Expense':'Transfer',t.k==='t'?'Transfer':cat(t.c).name,w?w.name:'',t.a,t.m||''])}shareFile('MoneyTrack-history.csv',rows.map(r=>r.map(q).join(',')).join('\n'),'text/csv')}
 function histFilter(){const q=H.q.trim().toLowerCase();return P().txns.filter(t=>(H.d?sd(t.t)===H.d:(H.m==='all'||mkey(t.t)===H.m))&&(H.f==='all'||t.k===H.f)&&(H.w==='all'||t.w===H.w||t.to===H.w)&&(!q||(t.m||'').toLowerCase().includes(q)||cat(t.c).name.toLowerCase().includes(q)||String(t.a).includes(q))).sort(H.s==='old'?(a,b)=>a.t-b.t:H.s==='big'?(a,b)=>b.a-a.a:H.s==='small'?(a,b)=>a.a-b.a:(a,b)=>b.t-a.t)}
 function histList(){
  const all=histFilter();const total=all.length;const L=all.slice(0,H.n);
@@ -374,7 +397,7 @@ function histList(){
  let out=months.map(m=>{const full=all.filter(t=>mkey(t.t)===m.k);const inn=full.filter(t=>t.k==='i'&&!SYSC(t.c)).reduce((s,t)=>s+t.a,0),outv=full.filter(t=>t.k==='e'&&!SYSC(t.c)).reduce((s,t)=>s+t.a,0),mx=Math.max(inn,outv,1);
   const head=`<section class="g card" style="padding:18px;margin-top:6px"><div class="lbl"><span class="t">${mlabel(m.k)}</span><span class="sm">${full.length} ${full.length===1?'entry':'entries'}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><span class="sm">${rc()?'Deposits':'In'}</span><b class="inc" style="display:block;font-size:18px" data-cu="${inn}" data-mode="compact" data-cur="${cur()}">${compact(inn)}</b>${trk(inn/mx,'var(--inc)')}</div><div><span class="sm">${rc()?'Withdrawals':'Out'}</span><b class="exp" style="display:block;font-size:18px" data-cu="${outv}" data-mode="compact" data-cur="${cur()}">${compact(outv)}</b>${trk(outv/mx,'var(--exp)')}</div></div></section>`;
   const days=m.days.map(g=>{const net=g.items.reduce((s,t)=>s+(t.k==='i'?t.a:t.k==='e'?-t.a:0),0);const lab=g.k===td?'Today':g.k===td-DAY?'Yesterday':new Date(g.k).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});return`<div class="day"><span>${lab}</span><span>${net?money(net,undefined,true):''}</span></div><div class="g card" style="padding:6px 16px;margin-bottom:0;border-radius:26px">${g.items.map(t=>txRow(t,rmx)).join('')}</div>`}).join('');
-  return head+days}).join('');
+  return (typeof H.m==='number'?'':head)+days}).join('');
  if(total>L.length)out+=`<button class="btn soft" style="margin-top:18px" data-act="more">Show more (${total-L.length} left)</button>`;
  return out}
 
@@ -383,6 +406,7 @@ function vSettings(){
  return ttl('Make it yours','Settings')+
  card('Profiles',S.profiles.map(q=>`<button class="row" data-act="switch" data-id="${q.id}"><div class="av" style="width:40px;height:40px">${esc(q.name.slice(0,1).toUpperCase())}</div><div class="m"><b>${esc(q.name)}</b><span>${q.kind==='records'?'Savings records':'Daily spending'} · ${q.wallets.length} ${q.kind==='records'?'plans':'wallets'} · ${q.txns.length.toLocaleString()} entries</span></div>${q.id===S.active?`<span class="pill inc">Active</span>`:''}</button>`).join('')+`<button class="btn soft" style="margin-top:12px" data-act="newprofile">${ico('plus',18)} New profile</button><button class="btn soft" data-act="manage" data-id="${p.id}">${ico('edit',18)} Rename or delete “${esc(p.name)}”</button>`,{i:1})+
  card('Saved status',saveStatus(),{i:1})+
+ card('App lock',secCard(),{i:1})+
  card('Auto-save to a file',autoCard(),{i:2})+
  card('Vibe',`<div class="vibes">${[['nova','Nova','linear-gradient(135deg,#4f46e5,#9333ea)'],['glass','Glass','linear-gradient(135deg,#60a5fa,#c4b5fd)'],['sunset','Sunset','linear-gradient(135deg,#f97316,#ec4899)'],['ocean','Ocean','linear-gradient(135deg,#0284c7,#0d9488)'],['berry','Berry','linear-gradient(135deg,#c026d3,#7c3aed)'],['mono','Mono','linear-gradient(135deg,#18181b,#a1a1aa)']].map(([k,n,g])=>`<button class="vb ${((st.vibe==='aurora'?'glass':st.vibe)||'nova')===k?'on':''}" data-act="vibe" data-v="${k}"><i style="background:${g}"></i>${n}</button>`).join('')}</div>`,{i:2})+
  card('Appearance',`<div class="seg">${[['auto','Auto'],['light','White'],['dark','Dark']].map(([k,v])=>`<button class="${st.theme===k?'on':''}" data-act="theme" data-v="${k}">${v}</button>`).join('')}</div>`,{i:2})+
@@ -586,6 +610,10 @@ document.addEventListener('click',e=>{
  case'catd':openCat(id);break;
  case'addflow':openAdd(null,{k:FLOW});break;
  case'cal':openCal();break;
+ case'hday':H.d=H.d===+v?null:+v;H.n=120;render();break;
+ case'hexport':hExport();break;
+ case'pinset':pinSet();break;
+ case'pinoff':pinOff();break;
  case'qa':openAdd(null,{k:v});break;
  case'budget':openBudget();break;
  case'recnew':openRec();break;
@@ -624,7 +652,7 @@ document.addEventListener('click',e=>{if(e.target.id==='ib'&&dp){dp.prompt();dp=
 addEventListener('resize',()=>fitAll(document));
 
 /* ---------- boot ---------- */
-PER=P().kind==='records'?'y':'m';runRec();applyTheme();shell();render();document.addEventListener('visibilitychange',()=>{if(!document.hidden&&runRec()&&TAB!=='settings')render()});
+PER=P().kind==='records'?'y':'m';runRec();applyTheme();shell();render();lockScreen();var HID=0;document.addEventListener('visibilitychange',()=>{if(document.hidden){HID=Date.now();return}if(S.set.pin&&HID&&Date.now()-HID>60000)lockScreen();if(runRec()&&TAB!=='settings')render()});
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
