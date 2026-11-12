@@ -42,7 +42,7 @@ del:'<path d="M21 5H9l-6 7 6 7h12z"/><path d="M13 9.5l4 5M17 9.5l-4 5"/>'
 const ico=(n,s=22)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[n]||''}</svg>`;
 const WTYPES=[['bank','Bank account'],['card','Card'],['mobileMoney','Mobile money'],['cash','Cash at hand'],['savings','Savings'],['invest','Investment']];
 const DAY=864e5;
-const VER='6.1';
+const VER='6.2';
 const SXB=`<button class="sx" data-close aria-label="Close">${ico('x',18)}</button>`;
 const VW=()=>P().wallets.filter(w=>!w.hidden);
 
@@ -68,7 +68,7 @@ function idb(){return new Promise((res,rej)=>{const r=indexedDB.open('mt',1);r.o
 async function idbGet(k){try{const d=await idb();return await new Promise(r=>{const q=d.transaction('k').objectStore('k').get(k);q.onsuccess=()=>r(q.result);q.onerror=()=>r()})}catch(e){}}
 async function idbSet(k,v){try{const d=await idb();return await new Promise(r=>{const t=d.transaction('k','readwrite');t.objectStore('k').put(v,k);t.oncomplete=r;t.onerror=r})}catch(e){}}
 async function afInit(){if(!window.showSaveFilePicker)return;try{AFH=await idbGet('fh')||null;if(AFH){AFN=AFH.name;AFS=(await AFH.queryPermission({mode:'readwrite'}))==='granted'?'on':'ask'}}catch(e){AFH=null}if(TAB==='settings')render()}
-async function afWrite(){if(!AFH)return;try{if((await AFH.queryPermission({mode:'readwrite'}))!=='granted'){AFS='ask';return}const w=await AFH.createWritable();await w.write(JSON.stringify(S));await w.close();AFS='on';S.set.lastAuto=Date.now()}catch(e){AFS='ask'}}
+async function afWrite(){if(!AFH)return;try{if((await AFH.queryPermission({mode:'readwrite'}))!=='granted'){AFS='ask';return}const w=await AFH.createWritable();await w.write(dataJSON());await w.close();AFS='on';S.set.lastAuto=Date.now()}catch(e){AFS='ask'}}
 async function afPick(){try{AFH=await showSaveFilePicker({suggestedName:'MoneyTrack-autosave.json',types:[{description:'MoneyTrack backup',accept:{'application/json':['.json']}}]});AFN=AFH.name;await idbSet('fh',AFH);await afWrite();render();toast('Auto-save is on')}catch(e){}}
 async function afAllow(){try{if((await AFH.requestPermission({mode:'readwrite'}))==='granted'){await afWrite();render();toast('Auto-save is on')}}catch(e){}}
 function autoCard(){if(!window.showSaveFilePicker)return`<p class="sm" style="line-height:1.55">Automatic saving to a folder is not allowed by iPhone or Android browsers. On a laptop (Chrome or Edge) this page can keep one backup file up to date by itself.<br><br>On your phone: tap Back up now, then Save to Files, pick iCloud Drive and keep replacing the same file. The app reminds you after every 15 new entries.</p>`;
@@ -105,6 +105,7 @@ async function pinSet(){const go=()=>askPin('Choose a PIN',v1=>{askPin('Repeat t
  if(S.set.pin)askPin('Current PIN',async v=>{if((await hashPin(v))!==S.set.pin)return'bad';go();return'ok'},true);else go()}
 function pinOff(){askPin('Enter PIN to turn off',async v=>{if((await hashPin(v))!==S.set.pin)return'bad';S.set.pin=null;save();render();toast('App lock is off')},true)}
 function secCard(){return S.set.pin?`<div class="svst"><i class="dot"></i><div class="m"><b>App lock is on</b><span class="sm" style="display:block">Asks for your PIN when you open the app or come back after a minute.</span></div></div><button class="btn soft" style="margin-top:12px" data-act="pinset">Change PIN</button><button class="btn red" data-act="pinoff">Turn off</button>`:`<p class="sm" style="line-height:1.5">Ask for a 4 digit PIN when the app opens. It keeps casual snoopers out. Your data is not encrypted.</p><button class="btn soft" style="margin-top:12px" data-act="pinset">Set a PIN</button>`}
+const dataJSON=()=>JSON.stringify({v:2,app:'MoneyTrack',profiles:S.profiles,active:S.active});
 let LASTSAVE=0;
 function saveStatus(){const n=S.profiles.reduce((a,p)=>a+p.txns.length,0);const lb=S.set.lastBackup;const old=!lb||Date.now()-lb>14*DAY;return`<div class="svst ${old?'warn':''}"><i class="dot"></i><div class="m"><b>Saved on this device</b><span class="sm" style="display:block">${n.toLocaleString()} entries stored. Every entry is saved the moment you tap Save${LASTSAVE?'. Last save '+new Date(LASTSAVE).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):''}.</span><span class="sm" style="display:block;margin-top:4px">${lb?'Last backup file: '+new Date(lb).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'No backup file yet'}${old?'. Back up now to be extra safe.':'.'}</span></div></div><button class="btn soft" style="margin-top:12px" data-act="backupnow">Back up now</button>`}
 function doBackupNow(){const b=document.querySelector('[data-act=backup]');b?b.click():toast('Open Settings')}
@@ -578,7 +579,7 @@ async function shareFile(name,text,type){const f=new File([text],name,{type});
 function pickFile(accept,cb){const i=document.createElement('input');i.type='file';i.accept=accept;i.onchange=async()=>{const f=i.files[0];if(f)cb(await f.text())};i.click()}
 function handleText(text){const t=text.trim();if(t.startsWith('{')){return restoreText(text)}const r=importInto(P(),text);if(!r){toast('That file does not look like a MoneyTrack CSV');return}dirty();okAnim();toast(`Added ${r.added.toLocaleString()}, skipped ${r.skipped.toLocaleString()} duplicates`);setTab(TAB==='settings'?'today':TAB)}
 function doImport(){pickFile('*/*',handleText)}
-function restoreText(text){try{const j=JSON.parse(text);if(!j||!Array.isArray(j.profiles)||!j.profiles.length)throw 0;if(!confirm('Replace everything on this device with this backup?'))return;const th=S.set.theme;S=fix(j);S.set.theme=th;_bal=_wm=_cm=null;save();applyTheme();shell();TAB='today';render();okAnim();toast('Backup restored')}catch(e){toast('That is not a MoneyTrack backup')}}
+function restoreText(text){try{const j=JSON.parse(text);if(!j||!Array.isArray(j.profiles)||!j.profiles.length)throw 0;if(!confirm('Replace your profiles, wallets and entries with this backup? Your look and settings stay as they are.'))return;const keep=S.set;S=fix({v:2,profiles:j.profiles,active:j.active});S.set=Object.assign({theme:'auto'},keep);_bal=_wm=_cm=null;save();applyTheme();shell();TAB='today';render();okAnim();toast('Backup restored')}catch(e){toast('That is not a MoneyTrack backup')}}
 function doRestore(){pickFile('*/*',handleText)}
 
 /* ---------- story ---------- */
@@ -661,7 +662,7 @@ document.addEventListener('click',e=>{
  case'cats':setTab('cats');break;
  case'import':doImport();break;
  case'export':shareFile('MoneyTrack-'+P().name.replace(/\s+/g,'')+'.csv',exportCSV(),'text/csv');break;
- case'backup':shareFile('MoneyTrack-backup.json',JSON.stringify(S),'application/json').then(()=>{S.set.lastBackup=Date.now();S.set.bkN=totN();save();if(TAB==='today'||TAB==='settings')render()});break;
+ case'backup':shareFile('MoneyTrack-backup.json',dataJSON(),'application/json').then(()=>{S.set.lastBackup=Date.now();S.set.bkN=totN();save();if(TAB==='today'||TAB==='settings')render()});break;
  case'restore':doRestore();break;
  case'wipe':if(confirm(`Erase everything in ${P().name}? Back up first if you want a copy.`)&&confirm('Really erase it?')){const p=P();p.wallets=[];p.txns=[];dirty();setTab('today');toast('Erased')}break;
  case'newcat':{const inc=v==='i';sheet(`<h2>New category</h2><input class="field" id="cn" placeholder="e.g. Pets" maxlength="24"><div class="err" id="ce"></div><div class="sticky"><button class="btn acc" id="cs">Add</button></div>`,sh=>{$('#cs',sh).onclick=()=>{const n=$('#cn',sh).value.trim();if(!cleanOK(n)){$('#ce',sh).textContent='Use 2 to 24 letters or numbers.';return}if(P().cats.some(c=>c.name.toLowerCase()===n.toLowerCase())){$('#ce',sh).textContent='That category exists.';return}const base=n.replace(/[^A-Za-z0-9]/g,'').toUpperCase();let code=base.slice(0,2),k=2;while(P().cats.concat(SYS_CATS).some(c=>c.code===code))code=base.slice(0,1)+(k++);P().cats.push({code,name:n,inc});COLORS[code]=COLORS[code]||PAL[P().cats.length%PAL.length];dirty();closeSheet();render()}});break}
@@ -686,5 +687,5 @@ addEventListener('load',()=>setTimeout(checkUpdate,1500));document.addEventListe
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 afInit();
-window.__mt={S:()=>S,P,importInto,render,setTab,save,dirty,switchProfile,exportCSV,load:()=>load(),shell};
+window.__mt={restoreText,S:()=>S,P,importInto,render,setTab,save,dirty,switchProfile,exportCSV,load:()=>load(),shell};
 })();
