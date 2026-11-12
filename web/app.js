@@ -42,7 +42,7 @@ del:'<path d="M21 5H9l-6 7 6 7h12z"/><path d="M13 9.5l4 5M17 9.5l-4 5"/>'
 const ico=(n,s=22)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[n]||''}</svg>`;
 const WTYPES=[['bank','Bank account'],['card','Card'],['mobileMoney','Mobile money'],['cash','Cash at hand'],['savings','Savings'],['invest','Investment']];
 const DAY=864e5;
-const VER='6.2';
+const VER='6.3';
 const SXB=`<button class="sx" data-close aria-label="Close">${ico('x',18)}</button>`;
 const VW=()=>P().wallets.filter(w=>!w.hidden);
 
@@ -576,11 +576,19 @@ function exportCSV(){
 async function shareFile(name,text,type){const f=new File([text],name,{type});
  try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f]});return}}catch(e){if(e&&e.name==='AbortError')return}
  const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
-function pickFile(accept,cb){const i=document.createElement('input');i.type='file';i.accept=accept;i.onchange=async()=>{const f=i.files[0];if(f)cb(await f.text())};i.click()}
+let _pf=null;
+const readFile=f=>new Promise((res,rej)=>{if(f.text)return f.text().then(res,rej);const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsText(f)});
+function pickFile(accept,cb){if(!_pf){_pf=document.createElement('input');_pf.type='file';_pf.style.cssText='position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0';document.body.appendChild(_pf)}
+ _pf.accept='.json,.csv,application/json,text/csv,text/plain';_pf.value='';
+ _pf.onchange=async()=>{const f=_pf.files&&_pf.files[0];if(!f)return;toast('Reading file...');try{cb(await readFile(f))}catch(e){toast('Could not read that file')}};_pf.click()}
 function handleText(text){const t=text.trim();if(t.startsWith('{')){return restoreText(text)}const r=importInto(P(),text);if(!r){toast('That file does not look like a MoneyTrack CSV');return}dirty();okAnim();toast(`Added ${r.added.toLocaleString()}, skipped ${r.skipped.toLocaleString()} duplicates`);setTab(TAB==='settings'?'today':TAB)}
 function doImport(){pickFile('*/*',handleText)}
-function restoreText(text){try{const j=JSON.parse(text);if(!j||!Array.isArray(j.profiles)||!j.profiles.length)throw 0;if(!confirm('Replace your profiles, wallets and entries with this backup? Your look and settings stay as they are.'))return;const keep=S.set;S=fix({v:2,profiles:j.profiles,active:j.active});S.set=Object.assign({theme:'auto'},keep);_bal=_wm=_cm=null;save();applyTheme();shell();TAB='today';render();okAnim();toast('Backup restored')}catch(e){toast('That is not a MoneyTrack backup')}}
-function doRestore(){pickFile('*/*',handleText)}
+function restoreText(text){let j;try{j=JSON.parse(text);if(!j||!Array.isArray(j.profiles)||!j.profiles.length)throw 0}catch(e){toast('That is not a MoneyTrack backup');return}
+ const sum=j.profiles.map(p=>`<div class="row"><div class="m"><b>${esc(p.name||'Profile')}</b><span>${(p.wallets||[]).length} ${p.kind==='records'?'plans':'wallets'} · ${(p.txns||[]).length.toLocaleString()} entries</span></div></div>`).join('');
+ sheet(`<h2>Restore this backup?</h2><p class="sm" style="margin:-6px 0 12px;line-height:1.5">This replaces your current profiles, wallets and entries. Your look and settings stay.</p><div class="card" style="background:var(--chip);box-shadow:none;border:0;padding:6px 16px">${sum}</div><div class="sticky"><button class="btn acc" id="rok">Replace my data</button><button class="btn soft" data-close>Cancel</button></div>`,sh=>{$('#rok',sh).onclick=()=>doRestoreNow(j)})}
+function doRestoreNow(j){const keep=S.set;S=fix({v:2,profiles:j.profiles,active:j.active});S.set=Object.assign({theme:'auto'},keep);_bal=_wm=_cm=null;save();closeSheet(true);applyTheme();shell();TAB='today';render();okAnim();toast('Backup restored')}
+function openRestore(){sheet(`<h2>Restore a backup</h2><p class="sm" style="margin:-6px 0 14px;line-height:1.5">Pick your MoneyTrack backup file. If the picker is slow or does not open, paste the backup text below instead.</p><button class="btn acc" id="rpick">Choose backup file</button><div class="lbl" style="margin-top:22px"><span>Or paste the backup text</span></div><textarea class="field" id="rpaste" rows="4" placeholder="Paste the contents of the backup file" style="resize:none"></textarea><button class="btn soft" id="rgo" style="margin-top:12px">Restore from pasted text</button>${PAD}`,sh=>{$('#rpick',sh).onclick=()=>pickFile('',t=>{closeSheet(true);handleText(t)});$('#rgo',sh).onclick=()=>{const t=$('#rpaste',sh).value.trim();if(!t){toast('Paste the backup text first');return}closeSheet(true);handleText(t)}})}
+function doRestore(){openRestore()}
 
 /* ---------- story ---------- */
 function storyData(){const now=new Date();let a0=new Date(now.getFullYear(),now.getMonth(),1),a1=new Date(now.getFullYear(),now.getMonth()+1,1);let an=analyze(a0.getTime(),a1.getTime());const key=rc()?'earned':'spent';if(!an[key]){a0=new Date(now.getFullYear(),now.getMonth()-1,1);a1=new Date(now.getFullYear(),now.getMonth(),1);an=analyze(a0.getTime(),a1.getTime())}if(!an[key])return null;
