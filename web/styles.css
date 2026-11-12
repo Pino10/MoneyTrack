@@ -389,3 +389,17 @@ html[data-vibe=mono][data-theme=dark] .hero{background:linear-gradient(135deg,#2
 .lk h2{font-size:20px;margin-bottom:18px}.pdots{display:flex;gap:16px;justify-content:center;margin-bottom:22px}.pdots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--mut);transition:.15s}.pdots i.on{background:var(--a1);border-color:var(--a1);transform:scale(1.1)}
 .lk .kp{margin:0}.lf{margin-top:16px;color:var(--a1);font-weight:700;font-size:14px}
 .lock.shake .lk{animation:shk .4s}@keyframes shk{20%,60%{transform:translateX(-10px)}40%,80%{transform:translateX(10px)}}
+
+/* ===== v5.1 ===== */
+.hstats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:16px 0 8px;position:relative;z-index:1}
+.hstats div{background:rgba(255,255,255,.16);border-radius:16px;padding:10px 11px;min-width:0}
+.hstats span{display:block;font-size:11px;opacity:.8;font-weight:600}.hstats b{display:block;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.note{display:flex;gap:14px;align-items:center;padding:14px 16px;border-radius:22px;margin-bottom:12px}
+.note i{flex:none;width:40px;height:40px;border-radius:14px;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 15%,transparent);color:var(--c)}
+.note p{font-size:14px;line-height:1.45}.note p b{font-weight:700}
+.gr{display:flex;align-items:center;gap:14px;padding:10px 0}.gr .pr{width:56px;height:56px;flex:none;margin:0}.gr .m{min-width:0}.gr .m b{font-size:14.5px;display:block}.gr .eta{font-size:12px;font-weight:600;color:var(--a1);display:block;margin-top:2px}
+.story .huge{overflow:hidden;max-width:100%}
+.story .sl>*{max-width:100%}.story p{overflow-wrap:anywhere}
+.fit{max-width:100%}
+@media(max-width:380px){.dock span{font-size:10.5px}.dock i{width:36px;height:36px}.hstats b{font-size:13px}.hstats div{padding:9px 8px}.hs3 b{font-size:16px}.hero2 .bigt{font-size:38px}.wcard{padding:16px}}
+@media(min-width:600px) and (max-width:899px){main{max-width:680px}.dock button{padding:16px 6px 14px}}
