@@ -473,3 +473,22 @@ html[data-vibe=mono][data-theme=dark] .hero{background:linear-gradient(135deg,#2
 .story .hb .tr{background:rgba(255,255,255,.2)}.story .hb .tr i{background:#fff}
 .story .bars .c.hi .p i{background:#fff!important}
 .story .dotsr i{background:rgba(255,255,255,.22)}.story .dotsr i.n{background:#fff}
+
+/* ===== v6.1 history + rhythm ===== */
+.dgrp{margin-bottom:20px}
+.dhead{display:flex;align-items:center;gap:12px;padding:0 4px 10px}
+.dbadge{flex:none;width:46px;height:52px;border-radius:16px;background:var(--vc);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;box-shadow:0 8px 18px -14px rgba(15,20,60,.4)}
+.dbadge b{font-size:19px;line-height:1;font-weight:800}.dbadge span{font-size:9.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--a1);font-weight:700}
+.dtx{min-width:0}.dtx b{display:block;font-size:15px;font-weight:700}.dtx span{display:block;font-size:12px;color:var(--mut)}
+.dnet{margin-left:auto;font-weight:700;font-size:14px;white-space:nowrap}
+.dcard{padding:4px 16px;border-radius:26px;margin:0}
+.hbig{display:flex;align-items:center;gap:10px;margin-top:14px;padding:11px 14px;border-radius:16px;background:var(--chip);font-size:13px}
+.hbig span{color:var(--mut);font-weight:600;flex:none}.hbig b{min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hbig em{font-style:normal;font-weight:800;color:var(--exp);flex:none}
+html:not([data-vibe=glass]) .card{margin-bottom:16px}
+.dock{margin-bottom:16px;gap:12px}
+.note{margin-bottom:16px}
+.hab,.kpis,.wgrid,.wlist{gap:14px;margin-bottom:16px}
+.cols{column-gap:16px}
+.story-card{margin-bottom:16px}
+.btn+.btn{margin-top:12px}
+.chips{padding:3px 2px}
