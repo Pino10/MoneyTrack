@@ -42,7 +42,7 @@ del:'<path d="M21 5H9l-6 7 6 7h12z"/><path d="M13 9.5l4 5M17 9.5l-4 5"/>'
 const ico=(n,s=22)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[n]||''}</svg>`;
 const WTYPES=[['bank','Bank account'],['card','Card'],['mobileMoney','Mobile money'],['cash','Cash at hand'],['savings','Savings'],['invest','Investment']];
 const DAY=864e5;
-const VER='8.1';
+const VER='8.2';
 const SXB=`<button class="sx" data-close aria-label="Close">${ico('x',18)}</button>`;
 const VW=()=>P().wallets.filter(w=>!w.hidden);
 
