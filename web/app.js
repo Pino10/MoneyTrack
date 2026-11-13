@@ -42,7 +42,7 @@ del:'<path d="M21 5H9l-6 7 6 7h12z"/><path d="M13 9.5l4 5M17 9.5l-4 5"/>'
 const ico=(n,s=22)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[n]||''}</svg>`;
 const WTYPES=[['bank','Bank account'],['card','Card'],['mobileMoney','Mobile money'],['cash','Cash at hand'],['savings','Savings'],['invest','Investment']];
 const DAY=864e5;
-const VER='8.0';
+const VER='8.1';
 const SXB=`<button class="sx" data-close aria-label="Close">${ico('x',18)}</button>`;
 const VW=()=>P().wallets.filter(w=>!w.hidden);
 
@@ -330,7 +330,7 @@ function chrome(){const p=P();document.documentElement.dataset.kind=p.kind;$('#p
  document.querySelectorAll('[data-tn]').forEach(b=>b.classList.toggle('on',b.dataset.tn===TAB));const eb=$('#eyb');if(eb)eb.classList.toggle('on',HIDE());
  document.querySelectorAll('.tl').forEach(s=>{if(s.parentNode.dataset.tn==='wallets')s.textContent=LB().wal});
  const l=$('#lens');if(TABIDX[TAB]!=null){l.style.opacity=1;l.style.setProperty('--i',TABIDX[TAB])}else l.style.opacity=0}
-function setTab(t){TAB=t;render();scrollTo(0,0)}
+function setTab(t){TAB=t;render();const a=$('#app');if(a)a.scrollTop=0}
 function render(){const v=view();if(!v)return;chrome();const f={today:vToday,wallets:vWallets,insights:vInsights,history:vHistory,settings:vSettings,cats:vCats,goals:vGoals,debts:vDebts,subs:vSubs}[TAB];v.innerHTML=f();play(v)}
 const ttl=(sub,t)=>`<div class="ttl rise"><small>${sub}</small><h1>${t}</h1></div>`;
 
@@ -529,7 +529,7 @@ const SR=(act,ic,col,t,sub,o={})=>`<button class="srow" data-act="${act}"${o.id?
 const SG=(t,body,i)=>`<div class="sgrp rise" style="--i:${i}"><div class="sgt">${t}</div><div class="g sbox">${body}</div></div>`;
 function vSettings(){
  const st=S.set,p=P(),n=p.txns.length;const cv=(st.vibe==='aurora'?'glass':st.vibe)||'nova';
- const vibes=[['nova','Nova','linear-gradient(135deg,#4f46e5,#9333ea)'],['glass','Glass','linear-gradient(135deg,#60a5fa,#c4b5fd)'],['sunset','Sunset','linear-gradient(135deg,#f97316,#ec4899)'],['ocean','Ocean','linear-gradient(135deg,#0284c7,#0d9488)'],['berry','Berry','linear-gradient(135deg,#c026d3,#7c3aed)'],['mono','Mono','linear-gradient(135deg,#18181b,#a1a1aa)']];
+ const vibes=[['nova','Nova','linear-gradient(135deg,#4f46e5,#9333ea)'],['liquid','Liquid','linear-gradient(135deg,#0a84ff,#5e5ce6 55%,#64d2ff)'],['glass','Glass','linear-gradient(135deg,#60a5fa,#c4b5fd)'],['sunset','Sunset','linear-gradient(135deg,#f97316,#ec4899)'],['ocean','Ocean','linear-gradient(135deg,#0284c7,#0d9488)'],['berry','Berry','linear-gradient(135deg,#c026d3,#7c3aed)'],['mono','Mono','linear-gradient(135deg,#18181b,#a1a1aa)']];
  return ttl('Make it yours','Settings')+
  `<section class="g card sprof rise" style="--i:1"><div class="av big">${esc(p.name.slice(0,1).toUpperCase())}</div><div class="m"><b>${esc(p.name)}</b><span>${p.kind==='records'?'Savings records':'Daily spending'} · ${n.toLocaleString()} entries · ${S.profiles.length} ${S.profiles.length===1?'profile':'profiles'}</span></div></section>
  <div class="sbtns rise" style="--i:1"><button class="btn soft" data-act="profiles">Switch profile</button><button class="btn soft" data-act="manage" data-id="${p.id}">Rename or delete</button></div>`+
@@ -556,7 +556,7 @@ function vCats(){
 let SH=null;const PAD='<div class="pad"></div>';
 function sheet(html,mount){closeSheet(true);if(!HS){try{history.pushState({mt:1},'')}catch(e){}HS=true}const L=$('#layer');L.innerHTML=`<div class="scrim"></div><div class="sheet" role="dialog">${SXB}<div class="grab"></div>${html}</div>`;const sc=$('.scrim',L),sh=$('.sheet',L);sc.onclick=()=>closeSheet();SH=sh;dragClose(sh);requestAnimationFrame(()=>requestAnimationFrame(()=>{sc.classList.add('on');sh.classList.add('on')}));syncLock();mount&&mount(sh);return sh}
 let _sy=0,_lk=false;
-function syncLock(){const open=!!document.querySelector('#layer .sheet');if(open&&!_lk){_sy=scrollY;document.body.style.top=-_sy+'px';document.body.classList.add('lock');_lk=true}else if(!open&&_lk){document.body.classList.remove('lock');document.body.style.top='';scrollTo(0,_sy);_lk=false}}
+function syncLock(){const open=!!document.querySelector('#layer .sheet');const a=$('#app');if(a)a.classList.toggle('sl0',open)}
 function dragClose(sh){let y0=0,dy=0,on=false;const g=sh.querySelector('.grab');if(!g)return;
  g.addEventListener('touchstart',e=>{y0=e.touches[0].clientY;dy=0;on=true;sh.style.transition='none'},{passive:true});
  g.addEventListener('touchmove',e=>{if(!on)return;dy=Math.max(0,e.touches[0].clientY-y0);sh.style.transform=`translate3d(0,${dy}px,0)`},{passive:true});
@@ -843,6 +843,8 @@ addEventListener('load',()=>setTimeout(checkUpdate,1500));document.addEventListe
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 afInit();
+try{if(!S.set.lq){S.set.lq=1;S.set.vibe='liquid';save();applyTheme()}}catch(e){}
+const _ap=document.getElementById('app');if(_ap)_ap.addEventListener('scroll',()=>{const t=document.querySelector('.top');if(t)t.classList.toggle('stuck',_ap.scrollTop>6)},{passive:true});
 try{const q=new URLSearchParams(location.search);if(q.get('tab')==='goals')setTab('goals');const ad=q.get('add');if(ad){setTimeout(()=>openAdd(null,{k:ad}),300)}if(q.has('add')||q.has('tab'))history.replaceState(null,'',location.pathname)}catch(e){}
 window.__mt={restoreText,S:()=>S,P,importInto,render,setTab,save,dirty,switchProfile,exportCSV,load:()=>load(),shell};
 })();
