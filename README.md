@@ -1,63 +1,28 @@
-# MoneyTrack (web app)
+# MoneyTrack
 
 A private, open source money tracker that runs in the browser and installs like an app on iPhone, Android and laptops. No account, no server: all data stays on your device.
 
 - Live app: https://pino10.github.io/MoneyTrack/
 - iPhone: open in Safari, tap Share, then Add to Home Screen.
 - Android: open in Chrome, tap the menu, then Install app.
-- Import and export CSV from Settings. Your records are never stored in this repository.
-- Source lives in the `web/` folder: plain HTML, CSS and JavaScript, no build step.
 
----
+## Features
+- Daily spending profiles with wallets, budgets, categories, goals, debts, subscriptions and recurring entries.
+- Savings records profiles for tracking deposits and growth.
+- Insights, monthly report, achievements and a guided setup.
+- Light and dark themes with a Liquid Glass style.
+- Backup and restore as a file, auto-save to a file, CSV import and export, optional PIN lock.
 
-# MoneyTrack
+## Privacy
+Everything is stored in your browser on your device. Your records are never stored in this repository.
 
-A free, open source money tracker for iPhone. It is built around one habit: pay yourself first.
-Everything stays on your phone. There are no accounts and no servers.
-
-## What it does
-- **Vault:** a liquid orb that fills as you save toward a goal you set.
-- **Pay yourself first:** when income arrives, slide how much to set aside and move it to your Vault.
-- **Wallets:** bank accounts, cards, mobile money, cash at hand and savings vaults, each with its own currency and optional pockets.
-- **Smart add:** type a note and it fills in the category, wallet and amount from your past entries.
-- **Insights and story mode:** animated charts, plus a story that walks through your month.
-- **Clean categories:** names use letters and numbers only, each with a short code such as `FD`.
-- **Light and dark** themes. Uses Liquid Glass on iOS 26 and frosted material on iOS 17 and 18.
-- **CSV import and export.** It reads the export format of the Android "Wallet" style app (Date, Type, Category, Amount, Currency, Memo, Wallet) and maps old categories to the cleaner ones.
-
-## Get the app (no Mac needed)
-1. Create a new public repository on GitHub and push this folder to the `main` branch.
-2. Open the **Actions** tab. The **Build IPA** workflow runs automatically (about 5 minutes).
-3. Open the finished run and download the **MoneyTrack-ipa** artifact. Unzip it to get `MoneyTrack.ipa`.
-4. To share it, create a **Release** on GitHub. The workflow attaches `MoneyTrack.ipa` to it.
-
-## Easiest and most trusted: Xcode (no third-party tools)
-1. On a Mac, install Xcode (free, App Store).
-2. On this page press the green **Code** button, then **Download ZIP**, and unzip it.
-3. Open `MoneyTrack.xcodeproj`. Click the project, then **Signing and Capabilities**, and choose your Apple ID as the Team.
-4. Plug in your iPhone, pick it at the top of Xcode, and press Run. Trust the profile on the phone when asked.
-
-## Other ways to install an iPhone
-The IPA is unsigned, so it must be signed with your own Apple ID when you install it:
-- **Sideloadly** (Mac or Windows): plug in the phone, drag in the IPA, sign in with your Apple ID.
-- **AltStore or SideStore:** add the IPA and it refreshes itself every week.
-- **Xcode on a Mac:** run `xcodegen generate`, open `MoneyTrack.xcodeproj`, choose your phone and press Run.
-
-With a free Apple ID the app must be refreshed every 7 days. A paid developer account lasts a year.
-After installing, go to Settings, General, VPN and Device Management and trust your developer profile.
-Turn on Developer Mode (Settings, Privacy and Security) if iOS asks.
-
-## Load your records
-Open the app, tap the gear on Today, then **Import a CSV file**. Duplicates are skipped, so importing twice is safe.
-Your data never goes in this repository.
-
-## Build it yourself
+## Develop
+The app lives in `web/`: plain HTML, CSS and JavaScript, no build step.
 ```
-brew install xcodegen
-xcodegen generate
-open MoneyTrack.xcodeproj
+cd web
+python3 -m http.server 8000
 ```
-Needs Xcode 15 or newer. The app targets iOS 17.
+Pushes to `main` that change `web/` are published to GitHub Pages by `.github/workflows/pages.yml`.
 
 ## Licence
 MIT.

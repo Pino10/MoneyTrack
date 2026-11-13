@@ -59,7 +59,7 @@ del:'<path d="M21 5H9l-6 7 6 7h12z"/><path d="M13 9.5l4 5M17 9.5l-4 5"/>'
 const ico=(n,s=22)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[n]||''}</svg>`;
 const WTYPES=[['bank','Bank account'],['card','Card'],['mobileMoney','Mobile money'],['cash','Cash at hand'],['savings','Savings'],['invest','Investment']];
 const DAY=864e5;
-const VER='10.2';
+const VER='10.3';
 const SXB=`<button class="sx" data-close aria-label="Close">${ico('x',18)}</button>`;
 const VW=()=>P().wallets.filter(w=>!w.hidden);
 
@@ -86,7 +86,7 @@ function calGrid(){const {y,m}=CAL;const first=new Date(y,m,1),dim=new Date(y,m+
 function openCal(){const n=new Date();const b=H.d?new Date(H.d):n;CAL={y:b.getFullYear(),m:b.getMonth()};
  sheet(`<h2>Pick a date</h2><p class="sm" style="margin:-8px 0 12px">Days with entries show a count. Tap one to see exactly what happened.</p><div id="calb">${calGrid()}</div><div style="display:flex;gap:10px;margin-top:14px"><button class="btn soft" id="cto">Today</button><button class="btn soft" id="ccl">Show everything</button></div>${PAD}`,sh=>{
   sh.addEventListener('click',e=>{const n=e.target.closest('[data-cn]'),d=e.target.closest('[data-cd]');if(n){CAL.m+=+n.dataset.cn;if(CAL.m<0){CAL.m=11;CAL.y--}if(CAL.m>11){CAL.m=0;CAL.y++}$('#calb',sh).innerHTML=calGrid()}else if(d){H.d=+d.dataset.cd;H.n=120;closeSheet();render()}});
-  $('#cto',sh).onclick=()=>{H.d=sd(Date.now());H.n=120;closeSheet();render()};
+  $('#cto',sh).onclick=()=>{H.from=H.to=0;H.d=sd(Date.now());H.n=120;closeSheet();render()};
   $('#ccl',sh).onclick=()=>{H.d=null;H.m='all';H.n=120;closeSheet();render()}})}
 var AFH=null,AFT=0,AFS='',AFN='';
 function idb(){return new Promise((res,rej)=>{const r=indexedDB.open('mt',1);r.onupgradeneeded=()=>r.result.createObjectStore('k');r.onsuccess=()=>res(r.result);r.onerror=rej})}
@@ -651,44 +651,58 @@ const mlabel=k=>MONTHS[k%12]+' '+Math.floor(k/12);
 function monthKeys(){const set=new Set(P().txns.map(t=>mkey(t.t)));return[...set].sort((a,b)=>b-a)}
 /* ---------- history toolbar and filter sheet ---------- */
 const FILT_IC='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>';
-const hActive=()=>{const a=[];const L=LB();if(H.f!=='all')a.push(['f',({e:L.exp+'s',i:rc()?'Deposits':'Income',t:'Transfers'})[H.f]]);if(H.w!=='all')a.push(['w',(WM()[H.w]||{}).name||'Wallet']);if(H.c)a.push(['c',cat(H.c).name]);if(H.min>0||H.max>0)a.push(['a',H.min>0&&H.max>0?`${compact(H.min)} to ${compact(H.max)}`:H.min>0?`Over ${compact(H.min)}`:`Under ${compact(H.max)}`]);if(H.r)a.push(['r','With receipt']);if(H.d)a.push(['d',new Date(H.d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})]);if(H.s&&H.s!=='new')a.push(['s',({old:'Oldest',big:'Largest',small:'Smallest'})[H.s]]);return a};
+const hActive=()=>{const a=[];const L=LB();if(H.f!=='all')a.push(['f',({e:L.exp+'s',i:rc()?'Deposits':'Income',t:'Transfers'})[H.f]]);if(H.w!=='all')a.push(['w',(WM()[H.w]||{}).name||'Wallet']);if(H.c)a.push(['c',cat(H.c).name]);if(H.min>0||H.max>0)a.push(['a',H.min>0&&H.max>0?`${compact(H.min)} to ${compact(H.max)}`:H.min>0?`Over ${compact(H.min)}`:`Under ${compact(H.max)}`]);if(H.r)a.push(['r','With receipt']);if(H.s&&H.s!=='new')a.push(['s',({old:'Oldest',big:'Largest',small:'Smallest'})[H.s]]);return a};
 function vHistory(){
  const mk=monthKeys();if(H.m==='cur'){const nk=mkey(Date.now());H.m=mk.includes(nk)?nk:(mk[0]!=null?mk[0]:'all')}const act=hActive();
  return ttl('Everything you logged','History')+
  `<div class="hbar rise" style="--i:1"><div class="search">${ico('search',18)}<input class="field" id="q" placeholder="Search notes, categories, amounts" value="${esc(H.q)}"></div><button class="fbtn ${act.length?'on':''}" data-act="hfopen" aria-label="Filters">${FILT_IC}${act.length?`<i>${act.length}</i>`:''}</button></div>
+ <button class="hper rise" style="--i:3" data-act="hper">${ico('cal',18)}<span>${esc(hPeriodLabel())}</span><em>${ico('chev',16)}</em></button>
  <div class="hseg rise" style="--i:2">${[['all','All'],['e',LB().exp+'s'],['i',rc()?'Deposits':'Income'],['t','Transfers']].map(([k,v])=>`<button class="${H.f===k?'on':''}" data-act="hf" data-v="${k}">${v}</button>`).join('')}</div>
- <div class="chips hmon rise" style="--i:3"><button class="chip ${H.m==='all'?'on':''}" data-act="hm" data-v="all">All time</button>${mk.map(k=>`<button class="chip ${H.m===k?'on':''}" data-act="hm" data-v="${k}">${MONTHS[k%12].slice(0,3)} ${String(Math.floor(k/12)).slice(2)}</button>`).join('')}</div>
  ${act.length?`<div class="chips hact rise" style="--i:3">${act.map(([k,l])=>`<button class="chip on act" data-act="hx" data-v="${k}">${esc(l)} <b>${ico('x',12)}</b></button>`).join('')}${act.length>1?'<button class="chip" data-act="hclr">Clear all</button>':''}</div>`:''}
  ${histSummary()}
  <div id="hl">${histList()}</div>`}
-const hReset=()=>{H.f='all';H.w='all';H.c='';H.min=0;H.max=0;H.r=false;H.d=0;H.s='new';H.n=120};
+const hReset=()=>{H.f='all';H.w='all';H.c='';H.min=0;H.max=0;H.r=false;H.s='new';H.n=120};
+const fmtD=t=>new Date(t).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+function hPeriodLabel(){if(H.from||H.to)return (H.from&&H.to?fmtD(H.from)+' to '+fmtD(H.to-1):H.from?'From '+fmtD(H.from):'Until '+fmtD(H.to-1));if(H.d)return fmtD(H.d);if(typeof H.m==='number')return MONTHS[H.m%12]+' '+Math.floor(H.m/12);return 'All time'}
+function hSetPeriod(o){H.m=o.m==null?'all':o.m;H.d=o.d||0;H.from=o.from||0;H.to=o.to||0;H.n=120;closeSheet();render()}
+function openHPeriod(){const td=sd(Date.now()),n=new Date(),cur=mkey(Date.now()),mk=monthKeys(),ms=k=>MONTHS[k%12]+' '+Math.floor(k/12);
+ const pre=[['All time',{}],['Today',{from:td,to:td+DAY}],['Last 7 days',{from:td-6*DAY,to:td+DAY}],['Last 30 days',{from:td-29*DAY,to:td+DAY}],['This month',{m:cur}],['Last month',{m:cur-1}],['This year',{from:new Date(n.getFullYear(),0,1).getTime(),to:new Date(n.getFullYear()+1,0,1).getTime()}]];
+ const isOn=o=>!H.from&&!H.to&&!H.d&&(o.m==null?H.m==='all':H.m===o.m)&&!o.from;
+ sheet(`<h2>Period</h2><div class="fch" style="margin-bottom:18px">${pre.map(([l],i)=>`<button class="chip ${isOn(pre[i][1])?'on':''}" data-p="${i}">${l}</button>`).join('')}</div>
+ <div class="lbl"><span>A month</span></div><select class="field" id="pmon" style="margin-bottom:18px"><option value="">Choose a month</option>${mk.map(k=>`<option value="${k}" ${H.m===k&&!H.from&&!H.d?'selected':''}>${ms(k)}</option>`).join('')}</select>
+ <div class="lbl"><span>A single day</span></div><input class="field" type="date" id="pday" value="${H.d?dateVal(H.d):''}" style="margin-bottom:18px">
+ <div class="lbl"><span>A duration</span></div><div style="display:flex;gap:10px"><input class="field" type="date" id="pfrom" value="${H.from?dateVal(H.from):''}" aria-label="From"><input class="field" type="date" id="pto" value="${H.to?dateVal(H.to-1):''}" aria-label="To"></div>
+ <div class="pad"></div><div class="sticky"><button class="btn acc" id="pgo">Apply duration</button></div>`,sh=>{
+  sh.addEventListener('click',e=>{const b=e.target.closest('[data-p]');if(b){buzz();hSetPeriod(pre[+b.dataset.p][1])}});
+  $('#pmon',sh).onchange=e=>{if(e.target.value!=='')hSetPeriod({m:+e.target.value})};
+  $('#pday',sh).onchange=e=>{if(e.target.value)hSetPeriod({d:sd(new Date(e.target.value+'T12:00').getTime())})};
+  $('#pgo',sh).onclick=()=>{const f=$('#pfrom',sh).value,t=$('#pto',sh).value;if(!f&&!t){toast('Pick a start or an end date');return}let a=f?new Date(f+'T00:00').getTime():0,b=t?new Date(t+'T00:00').getTime()+DAY:0;if(a&&b&&b<=a){const x=a;a=b-DAY;b=x+DAY}hSetPeriod({from:a,to:b})}})}
 function openHFilters(){const L=LB();
  const body=()=>{const cats=P().cats.filter(c=>!SYSC(c.code)&&(H.f==='all'||H.f==='t'||c.inc===(H.f==='i')));
   return`<div class="lbl"><span>Type</span></div><div class="seg" style="margin-bottom:18px">${[['all','All'],['e',L.exp+'s'],['i',rc()?'Deposits':'Income'],['t','Transfers']].map(([k,v])=>`<button class="${H.f===k?'on':''}" data-hf="f" data-v="${k}">${v}</button>`).join('')}</div>
-  ${P().wallets.length>1?`<div class="lbl"><span>${L.w1}</span><span class="sm">Tap again to clear</span></div><div class="pcs mini" style="margin-bottom:12px">${P().wallets.map(x=>payCard(x,{mini:1,on:H.w===x.id,attrs:`data-hf="w" data-v="${x.id}"`})).join('')}</div>`:''}
+  ${P().wallets.length>1?`<div class="lbl"><span>${L.w1}</span></div><div class="fch" style="margin-bottom:18px">${P().wallets.map(x=>`<button class="chip ${H.w===x.id?'on':''}" data-hf="w" data-v="${x.id}">${esc(x.name)}</button>`).join('')}</div>`:''}
   ${H.f!=='t'?`<div class="lbl"><span>Category</span></div><div class="fch"><button class="chip ${!H.c?'on':''}" data-hf="c" data-v="">Any</button>${cats.map(c=>`<button class="chip ${H.c===c.code?'on':''}" data-hf="c" data-v="${esc(c.code)}">${esc(c.name)}</button>`).join('')}</div>`:''}
   <div class="lbl" style="margin-top:18px"><span>Amount between</span></div><div style="display:flex;gap:10px"><input class="field" id="hmin" inputmode="decimal" placeholder="Min" value="${H.min>0?H.min:''}"><input class="field" id="hmax" inputmode="decimal" placeholder="Max" value="${H.max>0?H.max:''}"></div>
-  <div class="lbl" style="margin-top:18px"><span>On a single day</span>${H.d?'<button class="pill" data-hf="d0">Clear</button>':''}</div><input class="field" type="date" id="hdt" value="${H.d?dateVal(H.d):''}">
   <div class="lbl" style="margin-top:18px"><span>Sort by</span></div><div class="chips" style="flex-wrap:wrap;margin-bottom:4px">${[['new','Newest'],['old','Oldest'],['big','Largest'],['small','Smallest']].map(([k,v])=>`<button class="chip ${(H.s||'new')===k?'on':''}" data-hf="s" data-v="${k}">${v}</button>`).join('')}<button class="chip ${H.r?'on':''}" data-hf="r">With receipt</button></div>`};
  sheet(`<h2>Filters</h2><div id="hfb">${body()}</div><div style="height:96px"></div><div class="sticky two"><button class="btn soft" data-hf="reset">Reset</button><button class="btn acc" data-hf="done" id="hfd"></button></div>`,sh=>{
   const cnt=()=>{const n=histFilter().length;$('#hfd',sh).textContent=`Show ${n.toLocaleString()} ${n===1?'entry':'entries'}`};
-  const redraw=()=>{const sc=sh.scrollTop;$('#hfb',sh).innerHTML=body();sh.scrollTop=sc;cnt();render()};cnt();
+  const redraw=()=>{const sc=sh.scrollTop;$('#hfb',sh).innerHTML=body();sh.scrollTop=sc;cnt();histRefresh()};cnt();SHC=()=>render();sh.classList.add('fixh');
   sh.addEventListener('click',e=>{const b=e.target.closest('[data-hf]');if(!b)return;const a=b.dataset.hf,v=b.dataset.v;buzz();
-   if(a==='done'){closeSheet();render();return}
-   if(a==='reset'){hReset();H.m='all';redraw();return}
+   if(a==='done'){closeSheet();return}
+   if(a==='reset'){hReset();redraw();return}
    if(a==='f'){H.f=v;if(H.c&&H.f!=='all'&&H.f!=='t'&&cat(H.c).inc!==(H.f==='i'))H.c='';}
-   else if(a==='w')H.w=H.w===v?'all':v;else if(a==='c')H.c=v;else if(a==='s')H.s=v;else if(a==='r')H.r=!H.r;else if(a==='d0')H.d=0;
+   else if(a==='w')H.w=H.w===v?'all':v;else if(a==='c')H.c=v;else if(a==='s')H.s=v;else if(a==='r')H.r=!H.r;
    H.n=120;redraw()});
-  sh.addEventListener('input',e=>{if(e.target.id==='hmin'||e.target.id==='hmax')setTimeout(()=>{cnt();render()},0)});
-  sh.addEventListener('change',e=>{if(e.target.id==='hdt'){const v=e.target.value;H.d=v?sd(new Date(v+'T12:00').getTime()):0;if(H.d)H.m='all';redraw()}})})}
+  sh.addEventListener('input',e=>{if(e.target.id==='hmin'||e.target.id==='hmax')setTimeout(cnt,0)});
+  })}
 
 function histRefresh(){$('#hl').innerHTML=histList();const h=document.querySelector('.hsum');if(h)h.outerHTML=histSummary();countUps($('#hl'))}
 function histSummary(){const all=histFilter();let inn=0,out=0,big=null;for(const t of all){if(SYSC(t.c)||t.k==='t')continue;if(t.k==='i')inn+=t.a;else{out+=t.a;if(!big||t.a>big.a)big=t}}
- let glance='';if(typeof H.m==='number'){const y=Math.floor(H.m/12),mo=H.m%12,dim=new Date(y,mo+1,0).getDate(),v=Array(dim).fill(0);for(const t of P().txns){if(t.k==='e'&&!SYSC(t.c)){const d=new Date(t.t);if(d.getFullYear()===y&&d.getMonth()===mo&&(H.w==='all'||t.w===H.w))v[d.getDate()-1]+=t.a}}const mx=Math.max(1,...v);
+ let glance='';if(typeof H.m==='number'&&!H.from&&!H.to){const y=Math.floor(H.m/12),mo=H.m%12,dim=new Date(y,mo+1,0).getDate(),v=Array(dim).fill(0);for(const t of P().txns){if(t.k==='e'&&!SYSC(t.c)){const d=new Date(t.t);if(d.getFullYear()===y&&d.getMonth()===mo&&(H.w==='all'||t.w===H.w))v[d.getDate()-1]+=t.a}}const mx=Math.max(1,...v);
   glance=`<div class="dbars">${v.map((x,i)=>{const ts=new Date(y,mo,i+1).getTime();return`<button data-act="hday" data-v="${ts}" class="${H.d===ts?'on':''}" aria-label="Day ${i+1}"><i style="height:${Math.max(4,x/mx*100)}%"></i></button>`}).join('')}</div><div class="dax"><span>1</span><span>Tap a day to see it</span><span>${dim}</span></div>`}
  return`<section class="g card rise hsum" style="--i:4"><div class="hs3"><div><span>${rc()?'Deposits':'In'}</span><b class="inc">${compact(inn)}</b></div><div><span>${rc()?'Withdrawals':'Out'}</span><b class="exp">${compact(out)}</b></div><div><span>Net</span><b class="${inn-out<0?'exp':'inc'}">${compact(inn-out)}</b></div></div>${glance}${big?`<div class="hbig"><span>Biggest</span><b>${esc(big.m||cat(big.c).name)}</b><em>${money(big.a)}</em></div>`:''}<div class="hmeta"><span class="sm">${all.length.toLocaleString()} ${all.length===1?'entry':'entries'} shown</span><button class="pill" data-act="hexport">Export these</button></div></section>`}
 function hExport(){const q=v=>{v=String(v);if(/^[=+\-@\t\r]/.test(v)&&!/^-?\d+(\.\d+)?$/.test(v))v="'"+v;return'"'+v.replace(/"/g,'""')+'"'};const rows=[['Date','Type','Category','Wallet','Amount','Memo']];for(const t of histFilter()){const w=WM()[t.w];rows.push([new Date(t.t).toISOString().slice(0,16).replace('T',' '),t.k==='i'?'Income':t.k==='e'?'Expense':'Transfer',t.k==='t'?'Transfer':cat(t.c).name,w?w.name:'',t.a,t.m||''])}shareFile('MoneyTrack-history.csv',rows.map(r=>r.map(q).join(',')).join('\n'),'text/csv')}
-function histFilter(){const q=H.q.trim().toLowerCase();return P().txns.filter(t=>(q||(H.d?sd(t.t)===H.d:(H.m==='all'||mkey(t.t)===H.m)))&&(H.f==='all'||t.k===H.f)&&(H.w==='all'||t.w===H.w||t.to===H.w)&&(!H.c||t.c===H.c)&&(!(H.min>0)||t.a>=H.min)&&(!(H.max>0)||t.a<=H.max)&&(!H.r||t.img)&&(!q||(t.m||'').toLowerCase().includes(q)||cat(t.c).name.toLowerCase().includes(q)||String(t.a).includes(q)||((WM()[t.w]||{}).name||'').toLowerCase().includes(q))).sort(H.s==='old'?(a,b)=>a.t-b.t:H.s==='big'?(a,b)=>b.a-a.a:H.s==='small'?(a,b)=>a.a-b.a:(a,b)=>b.t-a.t)}
+function histFilter(){const q=H.q.trim().toLowerCase();return P().txns.filter(t=>(q||(H.from||H.to?(t.t>=(H.from||0)&&t.t<(H.to||1e15)):H.d?sd(t.t)===H.d:(H.m==='all'||mkey(t.t)===H.m)))&&(H.f==='all'||t.k===H.f)&&(H.w==='all'||t.w===H.w||t.to===H.w)&&(!H.c||t.c===H.c)&&(!(H.min>0)||t.a>=H.min)&&(!(H.max>0)||t.a<=H.max)&&(!H.r||t.img)&&(!q||(t.m||'').toLowerCase().includes(q)||cat(t.c).name.toLowerCase().includes(q)||String(t.a).includes(q)||((WM()[t.w]||{}).name||'').toLowerCase().includes(q))).sort(H.s==='old'?(a,b)=>a.t-b.t:H.s==='big'?(a,b)=>b.a-a.a:H.s==='small'?(a,b)=>a.a-b.a:(a,b)=>b.t-a.t)}
 function histList(){
  const all=histFilter();const total=all.length;const L=all.slice(0,H.n);
  if(!total)return'<p class="sm" style="text-align:center;padding:40px 0">Nothing found.</p>';
@@ -700,7 +714,7 @@ function histList(){
   const head=`<section class="g card" style="padding:18px;margin:6px 0 18px"><div class="lbl"><span class="t">${mlabel(m.k)}</span><span class="sm">${full.length} ${full.length===1?'entry':'entries'}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:16px"><div><span class="sm">${rc()?'Deposits':'In'}</span><b class="inc" style="display:block;font-size:18px" data-cu="${inn}" data-mode="compact" data-cur="${cur()}">${compact(inn)}</b>${trk(inn/mx,'var(--inc)')}</div><div><span class="sm">${rc()?'Withdrawals':'Out'}</span><b class="exp" style="display:block;font-size:18px" data-cu="${outv}" data-mode="compact" data-cur="${cur()}">${compact(outv)}</b>${trk(outv/mx,'var(--exp)')}</div></div></section>`;
   const days=m.days.map(g=>{const net=g.items.reduce((x,t)=>x+(t.k==='i'?t.a:t.k==='e'?-t.a:0),0);const dt=new Date(g.k);const lab=g.k===td?'Today':g.k===td-DAY?'Yesterday':dt.toLocaleDateString('en-GB',{weekday:'long'});
    return`<div class="dgrp"><div class="dhead"><div class="dbadge"><b>${dt.getDate()}</b><span>${MONTHS[dt.getMonth()].slice(0,3)}</span></div><div class="dtx"><b>${lab}</b><span>${dt.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})} · ${g.items.length} ${g.items.length===1?'entry':'entries'}</span></div><div class="dnet ${net>0?'inc':net<0?'exp':''}">${net?money(net,undefined,true):''}</div></div><div class="g dcard">${g.items.map(t=>swRow(t,rmx)).join('')}</div></div>`}).join('');
-  return (typeof H.m==='number'?'':head)+days}).join('');
+  return (typeof H.m==='number'&&!H.from&&!H.to?'':head)+days}).join('');
  if(total>L.length)out+=`<button class="btn soft" style="margin-top:18px" data-act="more">Show more (${total-L.length} left)</button>`;
  return out}
 
@@ -738,7 +752,7 @@ function vCats(){
  (rc()?'':`<button class="btn acc rise" style="--i:3" data-act="libcat">Browse the category library</button>`)+`<p class="sm" id="cerr" style="padding:0 8px"></p>`}
 
 /* ---------- sheets ---------- */
-let SH=null;const PAD='<div class="pad"></div>';
+let SH=null,SHC=null;const PAD='<div class="pad"></div>';
 function sheet(html,mount){closeSheet(true);if(!HS){try{history.pushState({mt:1},'')}catch(e){}HS=true}const L=$('#layer');L.innerHTML=`<div class="scrim"></div><div class="sheet" role="dialog">${SXB}<div class="grab"></div>${html}</div>`;const sc=$('.scrim',L),sh=$('.sheet',L);sc.onclick=()=>closeSheet();SH=sh;dragClose(sh);requestAnimationFrame(()=>requestAnimationFrame(()=>{sc.classList.add('on');sh.classList.add('on')}));syncLock();mount&&mount(sh);return sh}
 let _sy=0,_lk=false;
 function syncLock(){const open=!!document.querySelector('#layer .sheet');const a=$('#app');if(a)a.classList.toggle('sl0',open)}
@@ -750,7 +764,7 @@ function dragClose(sh){let y0=0,dy=0,on=false;const g=sh.querySelector('.grab');
 let HS=false;
 function closeSheet(now){if(!now&&HS){HS=false;try{history.back()}catch(e){}}_close(now)}
 window.addEventListener('popstate',()=>{if(HS){HS=false;_close(false)}});
-function _close(now){setTimeout(syncLock,now?0:480);const L=$('#layer');const sc=$('.scrim',L),sh=$('.sheet',L);SH=null;if(!sh)return;if(now){L.innerHTML='';return}sc.classList.remove('on');sh.classList.remove('on');setTimeout(()=>{if(!SH)L.innerHTML=''},450)}
+function _close(now){if(SHC){const f=SHC;SHC=null;setTimeout(f,now?0:60)}setTimeout(syncLock,now?0:480);const L=$('#layer');const sc=$('.scrim',L),sh=$('.sheet',L);SH=null;if(!sh)return;if(now){L.innerHTML='';return}sc.classList.remove('on');sh.classList.remove('on');setTimeout(()=>{if(!SH)L.innerHTML=''},450)}
 const cleanW=s=>/^[A-Za-z0-9][A-Za-z0-9 ()&'.\-]{1,39}$/.test(s.trim());
 const cleanOK=s=>/^[A-Za-z0-9][A-Za-z0-9 ]{1,23}$/.test(s.trim());
 
@@ -990,6 +1004,7 @@ document.addEventListener('click',e=>{
  case'debt':openDebt(id);break;
  case'dnew':openDebtForm();break;
  case'hfopen':openHFilters();break;
+ case'hper':openHPeriod();break;
  case'hx':{const m={f:()=>H.f='all',w:()=>H.w='all',c:()=>H.c='',a:()=>{H.min=0;H.max=0},r:()=>H.r=false,d:()=>H.d=0,s:()=>H.s='new'};m[v]&&m[v]();H.n=120;render();break}
  case'hrc':H.r=!H.r;render();break;
  case'hclr':hReset();render();break;
@@ -997,7 +1012,7 @@ document.addEventListener('click',e=>{
  case'reset':openReset();break;
  case'refresh':hardRefresh();break;
  case'chkupd':checkUpdate(true);break;
- case'hday':H.d=H.d===+v?null:+v;H.n=120;render();break;
+ case'hday':H.from=H.to=0;H.d=H.d===+v?null:+v;H.n=120;render();break;
  case'hexport':hExport();break;
  case'pinset':pinSet();break;
  case'pinoff':pinOff();break;
@@ -1005,14 +1020,14 @@ document.addEventListener('click',e=>{
  case'budget':openBudget();break;
  case'recnew':openRec();break;
  case'recdel':if(confirm('Stop this recurring entry? Past entries stay.')){P().rec=(P().rec||[]).filter(r=>r.id!==id);dirty();render()}break;
- case'calclear':H.d=null;H.n=120;render();break;
+ case'calclear':H.d=null;H.from=H.to=0;H.n=120;render();break;
  case'hsort':H.s=({new:'old',old:'big',big:'small',small:'new'})[H.s||'new'];H.n=120;render();break;
  case'afpick':afPick();break;
  case'afallow':afAllow();break;
  case'afstop':AFH=null;AFS='';idbSet('fh',null);render();break;
  case'hf':H.f=v;H.n=120;render();break;
  case'hw':H.w=v;H.n=120;render();break;
- case'hm':H.m=v==='all'?'all':+v;H.n=120;render();break;
+ case'hm':H.from=H.to=H.d=0;H.m=v==='all'?'all':+v;H.n=120;render();break;
  case'more':H.n+=120;$('#hl').innerHTML=histList();countUps($('#hl'));break;
  case'vibe':S.set.vibe=v;save();applyTheme();render();break;
  case'backupnow':doBackupNow();break;

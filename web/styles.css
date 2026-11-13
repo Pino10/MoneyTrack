@@ -732,3 +732,9 @@ html[data-vibe=liquid][data-theme=dark] .g.hero2{background:linear-gradient(150d
 .pcard.mini.on:after{background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/12px no-repeat}
 main{align-self:flex-start;min-height:100%}@media(max-width:899px){main{padding-bottom:calc(var(--safe-b) + 132px)}}
 .bdg i{justify-self:start;align-self:flex-start}.hs3 b svg{vertical-align:-3px;color:var(--a1)}
+/* v10.3 period button and stable filter sheet */
+.hper{display:flex;align-items:center;gap:10px;width:100%;padding:0 16px;height:48px;border-radius:16px;border:1px solid var(--hair,var(--bd));background:var(--chip);color:var(--fg);font:600 14.5px Poppins,sans-serif;margin-bottom:12px;cursor:pointer;text-align:left}
+.hper span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hper em{display:grid;color:var(--mut);transform:rotate(90deg)}.hper:active{transform:scale(.985)}
+.sheet.fixh{height:min(84dvh,720px);will-change:transform}
+.sheet .sticky.two,.sheet .sticky{position:sticky;bottom:0}
+.hper em{transform:none!important}.sheet input[type=date].field{min-width:0;width:100%;flex:1}
