@@ -545,3 +545,9 @@ button,a,.chip,[data-act]{touch-action:manipulation}
 .g[data-act]:active{transform:scale(.985);transition:transform .12s}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 body{-webkit-user-drag:none}img{-webkit-user-drag:none}
+
+/* v8 */
+.acts{gap:8px}.ib.on{color:var(--a1)}
+.rcp{display:flex;align-items:center;gap:14px}.rcp img{width:76px;height:76px;object-fit:cover;border-radius:18px}
+.rpimg{display:block;width:100%;max-height:240px;object-fit:cover;border-radius:22px;margin:0 0 14px}
+img.rpt{display:block;width:100%;border-radius:26px;background:var(--chip);aspect-ratio:1080/1350}
