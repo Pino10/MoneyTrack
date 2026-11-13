@@ -42,7 +42,7 @@ del:'<path d="M21 5H9l-6 7 6 7h12z"/><path d="M13 9.5l4 5M17 9.5l-4 5"/>'
 const ico=(n,s=22)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[n]||''}</svg>`;
 const WTYPES=[['bank','Bank account'],['card','Card'],['mobileMoney','Mobile money'],['cash','Cash at hand'],['savings','Savings'],['invest','Investment']];
 const DAY=864e5;
-const VER='8.2';
+const VER='8.3';
 const SXB=`<button class="sx" data-close aria-label="Close">${ico('x',18)}</button>`;
 const VW=()=>P().wallets.filter(w=>!w.hidden);
 
@@ -577,7 +577,11 @@ function openAdd(t,pre){
  A.s=(t||(pre&&pre.amt))?2:1;
  sheet(addHtml(),mountAdd).classList.add('tall')}
 const KS=()=>rc()?[['i','Deposit'],['e','Withdraw'],['t','Transfer']]:[['e','Expense'],['i','Income'],['t','Transfer']];
-const fmtAmt=x=>{x=x||'0';const p=x.split('.');return Number(p[0]||0).toLocaleString('en-US')+(x.includes('.')?'.'+(p[1]||''):'')};
+const OPS={'+':'+','-':'\u2212','*':'\u00d7','/':'\u00f7'};
+const hasOp=x=>/[+\-*/]/.test(x||'');
+function calc(x){x=String(x||'').replace(/[+\-*\/]+$/,'');if(!x)return 0;const t=x.split(/([+\-*\/])/).filter(q=>q!=='');const n=[parseFloat(t[0])],o=[];for(let i=1;i<t.length;i+=2){const op=t[i],v=parseFloat(t[i+1]);if(op==='*')n[n.length-1]*=v;else if(op==='/')n[n.length-1]/=v;else{o.push(op);n.push(v)}}let r=n[0];o.forEach((op,i)=>{r=op==='+'?r+n[i+1]:r-n[i+1]});return Math.round(r*100)/100}
+const fmtAmt1=x=>{x=x||'0';const p=x.split('.');return Number(p[0]||0).toLocaleString('en-US')+(x.includes('.')?'.'+(p[1]||''):'')};
+const fmtAmt=x=>!hasOp(x)?fmtAmt1(x):String(x).split(/([+\-*\/])/).filter(q=>q!=='').map(q=>OPS[q]?' '+OPS[q]+' ':fmtAmt1(q)).join('');
 const amtSz=x=>x.length<=8?'s1':x.length<=11?'s2':'s3';
 function freqH(cs){const fq={};for(const t of P().txns.slice(-500)){if(t.k===A.k&&t.c)fq[t.c]=(fq[t.c]||0)+1}const top=Object.entries(fq).sort((a,b)=>b[1]-a[1]).map(e=>e[0]).filter(k=>cs.some(c=>c.code===k)).slice(0,4);return top.length?`<div class="lbl"><span>Frequent</span></div><div class="chips" style="margin-bottom:16px">${top.map(k=>`<button class="chip ${A.c===k?'on':''}" data-a="c" data-v="${k}">${esc(cat(k).name)}</button>`).join('')}</div>`:''}
 const walChips=()=>P().wallets.filter(x=>!x.hidden||x.id===A.w).map(x=>`<button class="chip ${A.w===x.id?'on':''}" data-a="w" data-v="${x.id}">${esc(x.name)}</button>`).join('');
@@ -588,7 +592,7 @@ function addHtml(){
  const L=LB();const dt=new Date(A.t-new Date(A.t).getTimezoneOffset()*6e4).toISOString().slice(0,16);
  return`<div class="ad"><div class="adh"><h2>${A.edit?'Edit entry':'New entry'}</h2><div class="seg" id="aks">${KS().map(([k,v])=>`<button class="${A.k===k?'on':''}" data-a="k" data-v="${k}">${v}</button>`).join('')}</div></div>
  <div class="stage"><div class="track ${A.s===2?'s2':''}" id="atr">
- <section class="pg"><div class="amtbox s1"><small id="asym"></small><span id="amtv"></span></div><div class="amtsub" id="asub"></div><div class="kp">${[1,2,3,4,5,6,7,8,9,'.',0,'del'].map(k=>`<button data-a="key" data-v="${k}" aria-label="${k}">${k==='del'?ico('del',24):k}</button>`).join('')}</div><div class="foot"><button class="btn acc" data-a="next">Continue</button></div></section>
+ <section class="pg"><div class="amtbox s1"><small id="asym"></small><span id="amtv"></span></div><div class="amtsub" id="asub"></div><div class="kp">${[[1,2,3,'/'],[4,5,6,'*'],[7,8,9,'-'],['.',0,'del','+']].flat().map(k=>`<button data-a="key" data-v="${k}" class="${OPS[k]?'op':''}" aria-label="${k}">${k==='del'?ico('del',24):OPS[k]||k}</button>`).join('')}</div><div class="foot"><button class="btn acc" data-a="next">Continue</button></div></section>
  <section class="pg"><div class="scr" id="ascr"><button class="recap" data-a="back"><span id="rcap"></span><em>Change amount</em></button>
  <div class="lbl"><span>${A.k==='t'?'From':L.w1}</span></div><div class="chips" id="awr" style="margin-bottom:16px">${walChips()}</div><div id="ato">${toChips()}</div><div id="acat">${catSec()}</div>
  <div class="lbl"><span>Note</span></div><input class="field" id="memo" placeholder="What was it for?" maxlength="80" value="${esc(A.m)}" autocomplete="off"><div class="chips" id="sug" style="margin:8px 0 16px"></div>
@@ -598,12 +602,12 @@ function addHtml(){
 function mountAdd(sh){
  const memo=$('#memo',sh),when=$('#when',sh),tr=$('#atr',sh);
  const sug=()=>{const q=memo.value.trim().toLowerCase();const el=$('#sug',sh);if(!q){el.innerHTML='';return}const m={};for(const t of P().txns){const k=(t.m||'').trim();if(!k||!k.toLowerCase().startsWith(q)||k.toLowerCase()===q)continue;const o=m[k]||(m[k]={k,n:0,c:t.c});o.n++}el.innerHTML=Object.values(m).sort((a,b)=>b.n-a.n).slice(0,4).map(o=>`<button class="chip" data-a="sug" data-v="${esc(o.k)}" data-c="${o.c}">${esc(o.k)}</button>`).join('')};
- const paint=()=>{const w=WM()[A.w],t2=WM()[A.to];const f=fmtAmt(A.amt);const bx=$('.amtbox',sh);bx.className='amtbox '+amtSz(f)+(A.k==='i'?' inc':A.k==='e'?' exp':'');$('#amtv',sh).textContent=f;const sy=SYM[(w||{}).cur||cur()]||'';$('#asym',sh).textContent=sy;$('#rcap',sh).textContent=sy+f;$('#asub',sh).textContent=A.k==='t'?`${w?w.name:''}${t2?' to '+t2.name:''}`:(A.k==='i'?'into ':'from ')+(w?w.name:'')};
+ const paint=()=>{const w=WM()[A.w],t2=WM()[A.to];const f=fmtAmt(A.amt);const bx=$('.amtbox',sh);bx.className='amtbox '+amtSz(f)+(A.k==='i'?' inc':A.k==='e'?' exp':'');$('#amtv',sh).textContent=f;const ev=hasOp(A.amt)?'= '+fmtAmt1(String(calc(A.amt))):'';const sy=SYM[(w||{}).cur||cur()]||'';$('#asym',sh).textContent=sy;$('#rcap',sh).textContent=sy+(hasOp(A.amt)?fmtAmt1(String(calc(A.amt))):f);$('#asub',sh).textContent=(ev?ev+'  ·  ':'')+(A.k==='t'?`${w?w.name:''}${t2?' to '+t2.name:''}`:(A.k==='i'?'into ':'from ')+(w?w.name:''))};
  memo.oninput=()=>{A.m=memo.value;sug()};
  when.onchange=()=>{const v=new Date(when.value).getTime();if(v){A.t=v;$('#adc',sh).innerHTML=dayChips()}};
  sh.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,v=b.dataset.v;
-  if(a==='key'){buzz();let x=A.amt;if(v==='del')x=x.slice(0,-1);else if(v==='.'){if(!x.includes('.'))x=(x||'0')+'.'}else{if(x.includes('.')&&x.split('.')[1].length>=2)return;if(x.replace('.','').length>=10)return;x=x==='0'?String(v):x+v}A.amt=x;paint()}
-  else if(a==='next'){if(!(parseFloat(A.amt)>0)){toast('Enter an amount');buzz();return}A.s=2;tr.classList.add('s2');$('#ascr',sh).scrollTop=0}
+  if(a==='key'){buzz();let x=A.amt;const seg=x.split(/[+\-*\/]/).pop();if(v==='del')x=x.slice(0,-1);else if(OPS[v]){if(!x)return;x=/[+\-*\/]$/.test(x)?x.slice(0,-1)+v:x+v}else if(v==='.'){if(!seg.includes('.'))x=(seg===''?x+'0':x||'0')+'.'}else{if(seg.includes('.')&&seg.split('.')[1].length>=2)return;if(seg.replace('.','').length>=10||x.length>=26)return;x=seg==='0'?x.slice(0,-1)+String(v):x+v}A.amt=x;paint()}
+  else if(a==='next'){if(hasOp(A.amt))A.amt=String(calc(A.amt));if(!(parseFloat(A.amt)>0)){toast('Enter an amount');buzz();return}A.s=2;tr.classList.add('s2');$('#ascr',sh).scrollTop=0}
   else if(a==='back'){A.s=1;tr.classList.remove('s2')}
   else if(a==='k'){A.k=v;if(v!=='t'&&!P().cats.find(c=>c.code===A.c&&c.inc===(v==='i')))A.c='';sh.querySelectorAll('#aks button').forEach(x=>x.classList.toggle('on',x.dataset.v===v));$('#ato',sh).innerHTML=toChips();$('#acat',sh).innerHTML=catSec();paint()}
   else if(a==='w'){A.w=v;if(A.to===v)A.to='';$('#awr',sh).innerHTML=walChips();$('#ato',sh).innerHTML=toChips();paint()}
@@ -620,7 +624,7 @@ function mountAdd(sh){
  $('#rcf',sh).onchange=async e=>{const f=e.target.files[0];if(!f)return;try{A.img=await compressImg(f);$('#arc',sh).innerHTML=rcHtml()}catch(x){toast('Could not read that photo')}e.target.value=''};
  paint();sug()}
 function saveAdd(again){
- const a=parseFloat(A.amt);if(!(a>0)){toast('Enter an amount');buzz();return}
+ const a=calc(A.amt);if(!(a>0)){toast('Enter an amount');buzz();return}
  if(A.k==='t'){if(!A.to){toast('Choose where it goes');return}}else if(!A.c){toast('Pick a category');return}
  const t={id:A.edit||uid(),t:A.t,k:A.k,c:A.k==='t'?'TX':A.c,a:Math.round(a*100)/100,m:(A.m||'').trim(),w:A.w,to:A.k==='t'?A.to:''};if(A.img)t.img=A.img;
  if(A.edit){const i=P().txns.findIndex(x=>x.id===A.edit);P().txns[i]=t}else P().txns.push(t);

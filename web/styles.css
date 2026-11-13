@@ -610,3 +610,23 @@ html .g:not(.tabbar):not(.pp):not(.ib):not(.side):not(.btn):not(.wcard):after{co
 html[data-vibe=liquid] .g.card:before{background:radial-gradient(110% 60% at 10% -12%,rgba(255,255,255,.6),transparent 55%),linear-gradient(105deg,transparent 35%,rgba(255,255,255,.45) 50%,transparent 65%) -160% 0/60% 100% no-repeat;animation:swp 1.4s .25s ease-out both}
 @keyframes swp{to{background-position:0 0,260% 0}}
 @media(prefers-reduced-motion:reduce){.g:after,.g.card:before{animation:none!important}}
+
+/* ===== v8.3 glass legibility, borders, calculator keys ===== */
+:root{--hair:rgba(30,50,120,.14)}[data-theme=dark]{--hair:rgba(255,255,255,.13)}
+html .g:not(.tabbar):not(.pp):not(.ib):not(.side):not(.btn){isolation:isolate;border:1px solid var(--hair)}
+html[data-vibe=liquid] .g:before,html .g:before{z-index:-1}
+html[data-vibe=liquid] .g{background:linear-gradient(145deg,rgba(255,255,255,.86),rgba(255,255,255,.58));border-color:rgba(70,100,210,.2);-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);box-shadow:0 14px 34px -18px rgba(30,60,140,.38),inset 0 1.5px 0 #fff,inset 0 -1px 1px rgba(255,255,255,.4)}
+html[data-vibe=liquid][data-theme=dark] .g{background:linear-gradient(145deg,rgba(255,255,255,.15),rgba(255,255,255,.05));border-color:rgba(255,255,255,.18)}
+html[data-vibe=liquid] .g:before{opacity:.35}
+html[data-vibe=liquid] .g.card:before{animation:none;background:radial-gradient(110% 60% at 10% -12%,rgba(255,255,255,.7),transparent 55%)}
+html .g:not(.tabbar):not(.pp):not(.ib):not(.side):not(.btn):not(.wcard):after{background:conic-gradient(from var(--ang),rgba(255,255,255,.95),rgba(80,110,220,.18) 22%,rgba(255,255,255,.7) 50%,rgba(80,110,220,.18) 76%,rgba(255,255,255,.95))}
+[data-theme=dark] .g:not(.tabbar):not(.pp):not(.ib):not(.side):not(.btn):not(.wcard):after{background:conic-gradient(from var(--ang),rgba(255,255,255,.7),rgba(255,255,255,.05) 22%,rgba(255,255,255,.4) 50%,rgba(255,255,255,.05) 76%,rgba(255,255,255,.7))}
+.rise,.g{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+.sheet.tall .kp{grid-template-columns:repeat(4,1fr)}
+.sheet.tall .kp button.op{background:color-mix(in srgb,var(--a1) 16%,transparent);color:var(--a1);font-size:clamp(22px,3.2dvh,28px);font-weight:700}
+.sheet.tall .kp button.op:active{background:color-mix(in srgb,var(--a1) 30%,transparent)}
+#asub{min-height:18px}
+html[data-vibe=liquid] .g.hero{background:linear-gradient(135deg,#0a84ff,#5e5ce6 62%,#7d5cf0);color:#fff;border-color:rgba(255,255,255,.4);-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:0 24px 44px -22px #0a84ff,inset 0 1.5px 0 rgba(255,255,255,.6),inset 0 -1px 2px rgba(0,0,0,.15)}
+html[data-vibe=liquid] .g.hero:before{opacity:1;background:radial-gradient(90% 60% at 85% -10%,rgba(255,255,255,.4),transparent 60%)}
+html[data-vibe=liquid] .g.hero2{background:linear-gradient(150deg,color-mix(in srgb,var(--fc) 26%,rgba(255,255,255,.92)),rgba(255,255,255,.62))}
+html[data-vibe=liquid][data-theme=dark] .g.hero2{background:linear-gradient(150deg,color-mix(in srgb,var(--fc) 28%,rgba(20,24,44,.9)),rgba(255,255,255,.05))}
