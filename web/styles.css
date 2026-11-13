@@ -525,3 +525,14 @@ html:not([data-vibe=glass]) .card{margin-bottom:16px}
 .conf{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:3}
 .conf i{position:absolute;top:-14px;width:9px;height:15px;border-radius:2px;animation:cfall 2.8s cubic-bezier(.3,.6,.5,1) forwards}
 @keyframes cfall{to{transform:translate(var(--x),105vh) rotate(var(--r));opacity:.9}}
+
+/* v7.1 entry steadiness */
+.stage{overflow:clip;contain:paint;touch-action:pan-y;overscroll-behavior:none}
+.track{backface-visibility:hidden}
+.pg{contain:layout style}
+.scr{overflow-x:hidden;scroll-behavior:auto;overflow-anchor:none;transform:translateZ(0)}
+#sug{min-height:36px}
+.sheet.tall .cg button,.sheet.tall .cg .tile{transition:none}
+.sheet.tall .cg button:active{transform:none}
+.track.s2 .pg:first-child{visibility:hidden;transition:visibility 0s .5s}
+.track:not(.s2) .pg:last-child{visibility:hidden}

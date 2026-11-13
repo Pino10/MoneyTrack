@@ -42,7 +42,7 @@ del:'<path d="M21 5H9l-6 7 6 7h12z"/><path d="M13 9.5l4 5M17 9.5l-4 5"/>'
 const ico=(n,s=22)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[n]||''}</svg>`;
 const WTYPES=[['bank','Bank account'],['card','Card'],['mobileMoney','Mobile money'],['cash','Cash at hand'],['savings','Savings'],['invest','Investment']];
 const DAY=864e5;
-const VER='7.0';
+const VER='7.1';
 const SXB=`<button class="sx" data-close aria-label="Close">${ico('x',18)}</button>`;
 const VW=()=>P().wallets.filter(w=>!w.hidden);
 
@@ -156,7 +156,7 @@ function celebrate(g){const o=document.createElement('div');o.className='cele';c
  document.body.appendChild(o);buzz();const close=()=>{o.classList.add('out');setTimeout(()=>o.remove(),350)};$('#cok',o).onclick=close}
 let LASTSAVE=0;
 function saveStatus(){const n=S.profiles.reduce((a,p)=>a+p.txns.length,0);const lb=S.set.lastBackup;const old=!lb||Date.now()-lb>14*DAY;return`<div class="svst ${old?'warn':''}"><i class="dot"></i><div class="m"><b>Saved on this device</b><span class="sm" style="display:block">${n.toLocaleString()} entries stored. Every entry is saved the moment you tap Save${LASTSAVE?'. Last save '+new Date(LASTSAVE).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):''}.</span><span class="sm" style="display:block;margin-top:4px">${lb?'Last backup file: '+new Date(lb).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'No backup file yet'}${old?'. Back up now to be extra safe.':'.'}</span></div></div><button class="btn soft" style="margin-top:12px" data-act="backupnow">Back up now</button>`}
-function doBackupNow(){const b=document.querySelector('[data-act=backup]');b?b.click():toast('Open Settings')}
+function doBackupNow(){shareFile('MoneyTrack-backup.json',dataJSON(),'application/json').then(()=>{S.set.lastBackup=Date.now();S.set.bkN=totN();save();if(TAB==='today'||TAB==='settings')render()})}
 function save(){try{const j=JSON.stringify(S);localStorage.setItem(KEY,j);if(localStorage.getItem(KEY)!==j)throw 0;LASTSAVE=Date.now();clearTimeout(AFT);if(AFH)AFT=setTimeout(afWrite,1200);return true}catch(e){toast('Storage is full. Export a backup.');return false}}
 addEventListener('pagehide',save);document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
 let _bal=null,_wm=null,_cm=null;
@@ -722,7 +722,7 @@ document.addEventListener('click',e=>{
  case'cats':setTab('cats');break;
  case'import':doImport();break;
  case'export':shareFile('MoneyTrack-'+P().name.replace(/\s+/g,'')+'.csv',exportCSV(),'text/csv');break;
- case'backup':shareFile('MoneyTrack-backup.json',dataJSON(),'application/json').then(()=>{S.set.lastBackup=Date.now();S.set.bkN=totN();save();if(TAB==='today'||TAB==='settings')render()});break;
+ case'backup':doBackupNow();break;
  case'restore':doRestore();break;
  case'wipe':if(confirm(`Erase everything in ${P().name}? Back up first if you want a copy.`)&&confirm('Really erase it?')){const p=P();p.wallets=[];p.txns=[];dirty();setTab('today');toast('Erased')}break;
  case'newcat':{const inc=v==='i';sheet(`<h2>New category</h2><input class="field" id="cn" placeholder="e.g. Pets" maxlength="24"><div class="err" id="ce"></div><div class="sticky"><button class="btn acc" id="cs">Add</button></div>`,sh=>{$('#cs',sh).onclick=()=>{const n=$('#cn',sh).value.trim();if(!cleanOK(n)){$('#ce',sh).textContent='Use 2 to 24 letters or numbers.';return}if(P().cats.some(c=>c.name.toLowerCase()===n.toLowerCase())){$('#ce',sh).textContent='That category exists.';return}const base=n.replace(/[^A-Za-z0-9]/g,'').toUpperCase();let code=base.slice(0,2),k=2;while(P().cats.concat(SYS_CATS).some(c=>c.code===code))code=base.slice(0,1)+(k++);P().cats.push({code,name:n,inc});COLORS[code]=COLORS[code]||PAL[P().cats.length%PAL.length];dirty();closeSheet();render()}});break}
