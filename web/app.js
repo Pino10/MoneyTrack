@@ -42,7 +42,7 @@ del:'<path d="M21 5H9l-6 7 6 7h12z"/><path d="M13 9.5l4 5M17 9.5l-4 5"/>'
 const ico=(n,s=22)=>`<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[n]||''}</svg>`;
 const WTYPES=[['bank','Bank account'],['card','Card'],['mobileMoney','Mobile money'],['cash','Cash at hand'],['savings','Savings'],['invest','Investment']];
 const DAY=864e5;
-const VER='7.1';
+const VER='7.2';
 const SXB=`<button class="sx" data-close aria-label="Close">${ico('x',18)}</button>`;
 const VW=()=>P().wallets.filter(w=>!w.hidden);
 
@@ -480,10 +480,18 @@ function vCats(){
 
 /* ---------- sheets ---------- */
 let SH=null;const PAD='<div class="pad"></div>';
-function sheet(html,mount){closeSheet(true);const L=$('#layer');L.innerHTML=`<div class="scrim"></div><div class="sheet" role="dialog">${SXB}<div class="grab"></div>${html}</div>`;const sc=$('.scrim',L),sh=$('.sheet',L);sc.onclick=()=>closeSheet();SH=sh;requestAnimationFrame(()=>requestAnimationFrame(()=>{sc.classList.add('on');sh.classList.add('on')}));syncLock();mount&&mount(sh);return sh}
+function sheet(html,mount){closeSheet(true);if(!HS){try{history.pushState({mt:1},'')}catch(e){}HS=true}const L=$('#layer');L.innerHTML=`<div class="scrim"></div><div class="sheet" role="dialog">${SXB}<div class="grab"></div>${html}</div>`;const sc=$('.scrim',L),sh=$('.sheet',L);sc.onclick=()=>closeSheet();SH=sh;dragClose(sh);requestAnimationFrame(()=>requestAnimationFrame(()=>{sc.classList.add('on');sh.classList.add('on')}));syncLock();mount&&mount(sh);return sh}
 let _sy=0,_lk=false;
 function syncLock(){const open=!!document.querySelector('#layer .sheet');if(open&&!_lk){_sy=scrollY;document.body.style.top=-_sy+'px';document.body.classList.add('lock');_lk=true}else if(!open&&_lk){document.body.classList.remove('lock');document.body.style.top='';scrollTo(0,_sy);_lk=false}}
-function closeSheet(now){setTimeout(syncLock,now?0:480);const L=$('#layer');const sc=$('.scrim',L),sh=$('.sheet',L);SH=null;if(!sh)return;if(now){L.innerHTML='';return}sc.classList.remove('on');sh.classList.remove('on');setTimeout(()=>{if(!SH)L.innerHTML=''},450)}
+function dragClose(sh){let y0=0,dy=0,on=false;const g=sh.querySelector('.grab');if(!g)return;
+ g.addEventListener('touchstart',e=>{y0=e.touches[0].clientY;dy=0;on=true;sh.style.transition='none'},{passive:true});
+ g.addEventListener('touchmove',e=>{if(!on)return;dy=Math.max(0,e.touches[0].clientY-y0);sh.style.transform=`translate3d(0,${dy}px,0)`},{passive:true});
+ const end=()=>{if(!on)return;on=false;sh.style.transition='';if(dy>100){sh.style.transform='';closeSheet()}else sh.style.transform=''};
+ g.addEventListener('touchend',end);g.addEventListener('touchcancel',end)}
+let HS=false;
+function closeSheet(now){if(!now&&HS){HS=false;try{history.back()}catch(e){}}_close(now)}
+window.addEventListener('popstate',()=>{if(HS){HS=false;_close(false)}});
+function _close(now){setTimeout(syncLock,now?0:480);const L=$('#layer');const sc=$('.scrim',L),sh=$('.sheet',L);SH=null;if(!sh)return;if(now){L.innerHTML='';return}sc.classList.remove('on');sh.classList.remove('on');setTimeout(()=>{if(!SH)L.innerHTML=''},450)}
 const cleanW=s=>/^[A-Za-z0-9][A-Za-z0-9 ()&'.\-]{1,39}$/.test(s.trim());
 const cleanOK=s=>/^[A-Za-z0-9][A-Za-z0-9 ]{1,23}$/.test(s.trim());
 
@@ -747,5 +755,6 @@ addEventListener('load',()=>setTimeout(checkUpdate,1500));document.addEventListe
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 afInit();
+try{const q=new URLSearchParams(location.search);if(q.get('tab')==='goals')setTab('goals');const ad=q.get('add');if(ad){setTimeout(()=>openAdd(null,{k:ad}),300)}if(q.has('add')||q.has('tab'))history.replaceState(null,'',location.pathname)}catch(e){}
 window.__mt={restoreText,S:()=>S,P,importInto,render,setTab,save,dirty,switchProfile,exportCSV,load:()=>load(),shell};
 })();

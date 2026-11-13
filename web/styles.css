@@ -536,3 +536,12 @@ html:not([data-vibe=glass]) .card{margin-bottom:16px}
 .sheet.tall .cg button:active{transform:none}
 .track.s2 .pg:first-child{visibility:hidden;transition:visibility 0s .5s}
 .track:not(.s2) .pg:last-child{visibility:hidden}
+
+/* v7.2 native feel */
+html{overscroll-behavior:none}
+button,a,.chip,[data-act]{touch-action:manipulation}
+.sheet .grab{position:relative}.sheet .grab:after{content:"";position:absolute;left:-40px;right:-40px;top:-12px;bottom:-14px}
+.btn:active,.chip:active,.srow:active,.wcard:active,.dcard:active,.gcard:active,.gmini:active{transform:scale(.97);transition:transform .12s}
+.g[data-act]:active{transform:scale(.985);transition:transform .12s}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+body{-webkit-user-drag:none}img{-webkit-user-drag:none}
